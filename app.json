@@ -16,7 +16,7 @@
         "API_HASH": {
             "description": "Get this value by creating an app on https://my.telegram.org!"
         },
-        "BOT_TOKEN": {
+        "tok3n": {
             "description": "Bot token generated from https://t.me/BotFather (https://t.me/botfather)"
         },
         "SUDO_USERS": {

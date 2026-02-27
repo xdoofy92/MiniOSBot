@@ -1,58 +1,69 @@
 import logging
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import ContextTypes, CommandHandler, CallbackQueryHandler, filters
+
 from Config import Messages as tr
-from pyrogram import Client, filters
-from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-@Client.on_message(filters.private & filters.incoming & filters.command(['start']))
-def _start(client, message):
-    client.send_message(message.chat.id,
-        text=tr.START_MSG.format(message.from_user.first_name, message.from_user.id),
-        parse_mode="markdown",
-        reply_to_message_id=message.message_id
+
+def _help_buttons(pos: int):
+    if pos == 1:
+        return [[InlineKeyboardButton(text="-->", callback_data="help+2")]]
+    if pos == len(tr.HELP_MSG) - 1:
+        return [
+            [InlineKeyboardButton(text="Support Chat", url="https://t.me/ViperCommunity")],
+            [InlineKeyboardButton(text="Feature Request & Issues", url="https://github.com/viperadnan-git/force-subscribe-telegram-bot/issues/new")],
+            [InlineKeyboardButton(text="<--", callback_data=f"help+{pos-1}")],
+        ]
+    return [
+        [
+            InlineKeyboardButton(text="<--", callback_data=f"help+{pos-1}"),
+            InlineKeyboardButton(text="-->", callback_data=f"help+{pos+1}"),
+        ],
+    ]
+
+
+async def _start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not update.message or not update.message.from_user:
+        return
+    user = update.message.from_user
+    await update.message.reply_text(
+        tr.START_MSG.format(user.first_name, user.id),
+        parse_mode="Markdown",
+    )
+
+
+async def _help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not update.message:
+        return
+    await update.message.reply_text(
+        tr.HELP_MSG[1],
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(_help_buttons(1)),
+    )
+
+
+async def _help_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    if not query or not query.data or not query.data.startswith("help+"):
+        return
+    await query.answer()
+    try:
+        pos = int(query.data.split("+")[1])
+    except (IndexError, ValueError):
+        return
+    if pos < 1 or pos >= len(tr.HELP_MSG):
+        return
+    if query.message:
+        await query.message.edit_text(
+            tr.HELP_MSG[pos],
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(_help_buttons(pos)),
         )
 
 
-@Client.on_message(filters.private & filters.incoming & filters.command(['help']))
-def _help(client, message):
-    client.send_message(chat_id = message.chat.id,
-        text = tr.HELP_MSG[1],
-        parse_mode="markdown",
-        disable_notification = True,
-        reply_markup = InlineKeyboardMarkup(map(1)),
-        reply_to_message_id = message.message_id
-    )
-
-help_callback_filter = filters.create(lambda _, __, query: query.data.startswith('help+'))
-
-@Client.on_callback_query(help_callback_filter)
-def help_answer(client, callback_query):
-    chat_id = callback_query.from_user.id
-    message_id = callback_query.message.message_id
-    msg = int(callback_query.data.split('+')[1])
-    client.edit_message_text(chat_id=chat_id,    message_id=message_id,
-        text=tr.HELP_MSG[msg],    reply_markup=InlineKeyboardMarkup(map(msg))
-    )
-
-
-def map(pos):
-    if(pos==1):
-        button = [
-            [InlineKeyboardButton(text = '-->', callback_data = "help+2")]
-        ]
-    elif(pos==len(tr.HELP_MSG)-1):
-        url = "https://github.com/viperadnan-git/force-subscribe-telegram-bot/issues/new"
-        button = [
-            [InlineKeyboardButton(text = 'Support Chat', url="https://t.me/ViperCommunity")],
-            [InlineKeyboardButton(text = 'Feature Request & Issues', url=url)],
-            [InlineKeyboardButton(text = '<--', callback_data = f"help+{pos-1}")]
-        ]
-    else:
-        button = [
-            [
-                InlineKeyboardButton(text = '<--', callback_data = f"help+{pos-1}"),
-                InlineKeyboardButton(text = '-->', callback_data = f"help+{pos+1}")
-            ],
-        ]
-    return button
+def register(app):
+    app.add_handler(CommandHandler("start", _start, filters.ChatType.PRIVATE))
+    app.add_handler(CommandHandler("help", _help, filters.ChatType.PRIVATE))
+    app.add_handler(CallbackQueryHandler(_help_callback, pattern="^help\+"))

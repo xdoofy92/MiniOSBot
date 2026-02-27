@@ -32,14 +32,14 @@ pip3 install -r requirements.txt
 ```
 
 ### Configuration
-Add [APP_ID](https://my.telegram.org/apps), [API_HASH](https://my.telegram.org/apps), [BOT_TOKEN](https://t.me/botfather) in [Config.py](Config.py) or in Environment Variables.
+Solo necesitas el **token del bot** ([@BotFather](https://t.me/botfather)). En Railway define la variable **tok3n** con ese token. Opcional: **SUDO_USERS** (IDs separados por espacios), **DATABASE_URL** (PostgreSQL). No se requiere APP_ID ni API_HASH (usa [python-telegram-bot](https://github.com/python-telegram-bot/python-telegram-bot)).
 
-### Deploying
-- Run bot.py
+### Ejecución (solo Python)
 ```sh
-python3 bot.py
+pip install -r requirements.txt
+python bot.py
 ```
 
 ## Thanks to
-- [PyroGram](https://PyroGram.org)
+- [python-telegram-bot](https://github.com/python-telegram-bot/python-telegram-bot)
 - [Hasibul Kabir](https://GitHub.com/hasibulkabir) and [Spechide](https://GitHub.com/spechide) for helping.

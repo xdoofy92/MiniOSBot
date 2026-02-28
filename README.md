@@ -60,7 +60,7 @@ Todas las variables se definen en el entorno (en Railway: **Variables** del proy
 
 ## ⚠️ Importante: una sola instancia
 
-Telegram solo permite **una** conexión de polling por bot. Si ves el error `Conflict: terminated by other getUpdates request`:
+Telegram permite **una** conexión de polling por bot. Si ves error `Conflict: terminated by other getUpdates request`:
 
 - 🚂 **Railway:** en el servicio del bot, deja **1 réplica** (Settings → Replicas = 1). No dupliques el servicio.
 - 💻 **No ejecutes el bot en tu PC** si ya está desplegado en Railway (o al revés). Solo uno debe estar encendido.

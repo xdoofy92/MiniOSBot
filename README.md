@@ -1,57 +1,93 @@
-# Introduction
-**A Telegram Bot to force users to join a specific channel before sending messages in a group.**
+# 🤖 Introducción
 
-## Features
-- Force subscribe to **one or more channels** per group
-- Admins configurables por variable de entorno (IDs de administradores)
-- SQLite fallback when `DATABASE_URL` is not set (local development)
+**Bot de Telegram que obliga a los usuarios a unirse a un canal antes de poder enviar mensajes en un grupo.**
 
-## Deploy
+---
 
+## ✨ Características
 
-[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
+- 📌 Suscripción obligatoria a **uno o más canales** por grupo
+- 👥 Admins configurables por variable de entorno (IDs de administradores)
+- 🗄️ SQLite como respaldo cuando no se define `DATABASE_URL` (desarrollo local)
 
-### Installing Prerequisite
-- On Ubuntu 18.04 or later
+---
+
+## 🚀 Despliegue (Railway)
+
+Este proyecto está pensado para desplegarse en [Railway](https://railway.app/):
+
+1. Crea un proyecto en Railway y conecta este repositorio de GitHub.
+2. En **Variables** añade las variables que necesites (ver [Configuración](#-configuración) más abajo).
+3. Railway usará el `Procfile` y ejecutará `python bot.py`. ⚠️ Deja **1 réplica** (una sola instancia).
+
+### 📋 Requisitos previos (instalación local)
+
+En Ubuntu 18.04 o superior:
+
 ```sh
 sudo apt-get install git python3 python3-pip libpq-dev
 ```
 
-### Installation
-- Clone this repo
+### 📥 Instalación
+
+Clona el repositorio y entra en la carpeta:
+
 ```sh
-git clone https://github.com/viperadnan-git/force-subscribe-telegram-bot
+git clone https://github.com/xdoofy92/MiniOSBot
+cd MiniOSBot
 ```
-- Change directory
-```sh
-cd force-subscribe-telegram-bot
-```
-- Install requirements
+
+Instala las dependencias:
+
 ```sh
 pip3 install -r requirements.txt
 ```
 
-### Configuration
-Solo necesitas el **token del bot** ([@BotFather](https://t.me/botfather)). En Railway define la variable **tok3n** con ese token. Opcional: **SUDO_USERS** (IDs de admins separados por espacios), **DATABASE_URL** (PostgreSQL). No se requiere APP_ID ni API_HASH (usa [python-telegram-bot](https://github.com/python-telegram-bot/python-telegram-bot)).
+---
 
-### Importante: una sola instancia (evitar error «Conflict»)
-Telegram solo permite **una** conexión de polling por bot. Si ves `telegram.error.Conflict: terminated by other getUpdates request`:
-- **Railway:** en el servicio del bot, deja **1 réplica** (Settings → Replicas = 1). No dupliques el servicio.
-- **No ejecutes el bot en tu PC** si ya está desplegado en Railway (o al revés). Solo uno debe estar encendido.
-- Si cambias de entorno, espera unos segundos antes de arrancar el otro.
+## ⚙️ Configuración
 
-### Para que el bot mute y avise en el grupo
+Todas las variables se definen en el entorno (en Railway: **Variables** del proyecto). No se usa `APP_ID` ni `API_HASH`; el bot usa solo [python-telegram-bot](https://github.com/python-telegram-bot/python-telegram-bot).
+
+| Variable       | Obligatoria | Descripción |
+|----------------|-------------|-------------|
+| **tok3n**      | ✅ Sí       | Token del bot ([@BotFather](https://t.me/botfather)) |
+| **OWNER_ID**   | No          | Tu user ID de Telegram. Solo ese usuario puede usar el bot y añadirlo a grupos. |
+| **SUDO_USERS** | No          | IDs de usuarios separados por espacios (admins que pueden usar /FSub en el grupo). |
+| **DATABASE_URL** | No        | URL de PostgreSQL. Si no se define, se usa SQLite (archivo local). |
+
+---
+
+## ⚠️ Importante: una sola instancia
+
+Telegram solo permite **una** conexión de polling por bot. Si ves el error `Conflict: terminated by other getUpdates request`:
+
+- 🚂 **Railway:** en el servicio del bot, deja **1 réplica** (Settings → Replicas = 1). No dupliques el servicio.
+- 💻 **No ejecutes el bot en tu PC** si ya está desplegado en Railway (o al revés). Solo uno debe estar encendido.
+- ⏱️ Si cambias de entorno, espera unos segundos antes de arrancar el otro.
+
+---
+
+## 👑 Cómo usar el bot en el grupo
+
 1. **En el grupo:** el bot debe ser **administrador** con permiso **«Restringir miembros»** o **«Banear usuarios»**.
 2. **En el canal:** el bot debe ser **administrador** para poder comprobar suscripciones.
 3. **En @BotFather:** si el bot no es admin del grupo, activa **Bot Settings → Group Privacy → Disable** para que reciba todos los mensajes; si el bot ya es admin, no hace falta.
-4. **En el grupo:** el creador debe ejecutar `/ForceSubscribe @tu_canal` para definir el canal obligatorio.
+4. **En el grupo:** el creador (o un sudo) ejecuta `/FSub @tu_canal` para definir el canal obligatorio.
 
-### Ejecución (solo Python)
+---
+
+## ▶️ Ejecución local
+
 ```sh
 pip install -r requirements.txt
 python bot.py
 ```
 
-## Thanks to
+---
+
+## 🙏 Agradecimientos
+
 - [python-telegram-bot](https://github.com/python-telegram-bot/python-telegram-bot)
-- [Hasibul Kabir](https://GitHub.com/hasibulkabir) and [Spechide](https://GitHub.com/spechide) for helping.
+- [Hasibul Kabir](https://GitHub.com/hasibulkabir) y [Spechide](https://GitHub.com/spechide) por su ayuda.
+- Proyecto original: [viperadnan-git/force-subscribe-telegram-bot](https://github.com/viperadnan-git/force-subscribe-telegram-bot).

@@ -34,6 +34,12 @@ pip3 install -r requirements.txt
 ### Configuration
 Solo necesitas el **token del bot** ([@BotFather](https://t.me/botfather)). En Railway define la variable **tok3n** con ese token. Opcional: **SUDO_USERS** (IDs separados por espacios), **DATABASE_URL** (PostgreSQL). No se requiere APP_ID ni API_HASH (usa [python-telegram-bot](https://github.com/python-telegram-bot/python-telegram-bot)).
 
+### Para que el bot mute y avise en el grupo
+1. **En el grupo:** el bot debe ser **administrador** con permiso **«Restringir miembros»** o **«Banear usuarios»**.
+2. **En el canal:** el bot debe ser **administrador** para poder comprobar suscripciones.
+3. **En @BotFather:** si el bot no es admin del grupo, activa **Bot Settings → Group Privacy → Disable** para que reciba todos los mensajes; si el bot ya es admin, no hace falta.
+4. **En el grupo:** el creador debe ejecutar `/ForceSubscribe @tu_canal` para definir el canal obligatorio.
+
 ### Ejecución (solo Python)
 ```sh
 pip install -r requirements.txt

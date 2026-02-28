@@ -95,8 +95,6 @@ async def _check_member_impl(update: Update, context: ContextTypes.DEFAULT_TYPE)
     chat_type = getattr(message.chat, "type", None)
     user = message.from_user
     user_id = user.id if user else None
-    logger.info("Mensaje en chat_id=%s type=%s user_id=%s", chat_id, chat_type, user_id)
-
     if chat_type == "private":
         return
     try:
@@ -120,6 +118,7 @@ async def _check_member_impl(update: Update, context: ContextTypes.DEFAULT_TYPE)
         logger.warning("No se pudo obtener miembro chat=%s user=%s: %s", chat_id, user_id, e)
         return
     if member.status in ("administrator", "creator") or user_id in Config.SUDO_USERS:
+        logger.info("Usuario %s no se restringe (es %s o Admin)", user_id, member.status)
         return
     missing = []
     for ch in channels:
@@ -140,6 +139,7 @@ async def _check_member_impl(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 pass
             return
     if not missing:
+        logger.info("Usuario %s ya está en todos los canales %s, no se restringe", user_id, channels)
         return
 
     # Primero mutear (restringir), luego enviar mensaje citando al usuario (HTML evita errores con nombres con _ * etc.)
@@ -198,7 +198,7 @@ async def _cmd_forcesubscribe(update: Update, context: ContextTypes.DEFAULT_TYPE
         await message.reply_text("No pude verificar tu rol.")
         return
     if member.status != "creator" and message.from_user.id not in Config.SUDO_USERS:
-        await message.reply_text("**Solo el creador del grupo** (o un SUDO) puede hacer esto.", parse_mode="Markdown")
+        await message.reply_text("**Solo el creador del grupo** (o un Admin) puede hacer esto.", parse_mode="Markdown")
         return
     chat_id = message.chat.id
     args = (context.args or [])

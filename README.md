@@ -3,7 +3,7 @@
 
 ## Features
 - Force subscribe to **one or more channels** per group
-- SUDO users configurable via env (no hardcoded IDs)
+- Admins configurables por variable de entorno (IDs de administradores)
 - SQLite fallback when `DATABASE_URL` is not set (local development)
 
 ## Deploy
@@ -32,7 +32,7 @@ pip3 install -r requirements.txt
 ```
 
 ### Configuration
-Solo necesitas el **token del bot** ([@BotFather](https://t.me/botfather)). En Railway define la variable **tok3n** con ese token. Opcional: **SUDO_USERS** (IDs separados por espacios), **DATABASE_URL** (PostgreSQL). No se requiere APP_ID ni API_HASH (usa [python-telegram-bot](https://github.com/python-telegram-bot/python-telegram-bot)).
+Solo necesitas el **token del bot** ([@BotFather](https://t.me/botfather)). En Railway define la variable **tok3n** con ese token. Opcional: **SUDO_USERS** (IDs de admins separados por espacios), **DATABASE_URL** (PostgreSQL). No se requiere APP_ID ni API_HASH (usa [python-telegram-bot](https://github.com/python-telegram-bot/python-telegram-bot)).
 
 ### Importante: una sola instancia (evitar error «Conflict»)
 Telegram solo permite **una** conexión de polling por bot. Si ves `telegram.error.Conflict: terminated by other getUpdates request`:

@@ -157,11 +157,31 @@ async def _check_member_impl(update: Update, context: ContextTypes.DEFAULT_TYPE)
             return
 
     if not missing:
-        # Está suscrito a todos los canales → no hacer nada
-        logger.info("Usuario %s ya está en todos los canales %s", user_id, channels)
+        # Está suscrito a todos los canales
+        if member.status == "restricted":
+            # Verificación automática: ya se unió al canal, desmutear y borrar notificación
+            try:
+                await bot.restrict_chat_member(chat_id, user_id, permissions=_FULL_PERMISSIONS)
+                sql.remove_muted(chat_id, user_id)
+                old_msg_id = sql.get_notification_message_id(chat_id, user_id)
+                if old_msg_id:
+                    try:
+                        await bot.delete_message(chat_id, old_msg_id)
+                    except Exception:
+                        pass
+                sql.clear_notification_message_id(chat_id, user_id)
+                try:
+                    await message.delete()
+                except Exception:
+                    pass
+                logger.info("Usuario %s verificado automáticamente (ya está en el canal)", user_id)
+            except Exception as e:
+                logger.warning("Error en verificación automática para %s: %s", user_id, e)
+        else:
+            logger.info("Usuario %s ya está en todos los canales %s", user_id, channels)
         return
 
-    # No está suscrito: borrar mensaje, mutear, enviar enlace
+    # No está suscrito: borrar mensaje, mutear, y solo enviar notificación si aún no tiene una (no reemplazar)
     logger.info("Usuario %s no está en %s → borrar mensaje, mutear, enviar enlace", user_id, missing)
 
     try:
@@ -190,13 +210,10 @@ async def _check_member_impl(update: Update, context: ContextTypes.DEFAULT_TYPE)
         logger.exception("Error al restringir usuario %s en chat %s: %s", user_id, chat_id, e)
         return
 
-    # Eliminar la notificación anterior de este usuario (solo una notificación por usuario, la última)
+    # No eliminar la notificación hasta que el usuario se verifique; si ya tiene una, no enviar otra
     old_msg_id = sql.get_notification_message_id(chat_id, user_id)
     if old_msg_id:
-        try:
-            await bot.delete_message(chat_id, old_msg_id)
-        except Exception:
-            pass
+        return
 
     name_escaped = _escape_html(user.first_name or "Usuario")
     mention = f'<a href="tg://user?id={user_id}">{name_escaped}</a>'

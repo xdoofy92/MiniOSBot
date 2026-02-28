@@ -28,7 +28,7 @@ _MSG_LIMIT_BEFORE_MUTE = 10
 
 
 async def _on_unmute_request(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Usuario pulsó Verificar: si ya está en el canal, se borra la notificación."""
+    """Usuario pulsó Verificar: si ya está en el canal, se desmutea y solo se borra la notificación de ese usuario."""
     query = update.callback_query
     if not query or query.data != "onUnMuteRequest":
         return
@@ -52,11 +52,14 @@ async def _on_unmute_request(update: Update, context: ContextTypes.DEFAULT_TYPE)
             pass
         sql.remove_muted(chat_id, user_id)
         sql.clear_unverified_count(chat_id, user_id)
+        # Borrar solo la notificación asociada a quien pulsa, no el mensaje donde pulsó (puede ser de otro usuario)
+        old_msg_id = sql.get_notification_message_id(chat_id, user_id)
         sql.clear_notification_message_id(chat_id, user_id)
-        try:
-            await query.message.delete()
-        except Exception:
-            pass
+        if old_msg_id:
+            try:
+                await bot.delete_message(chat_id, old_msg_id)
+            except Exception:
+                pass
         await query.answer("✅ Verificado. Ya puedes participar.", show_alert=False)
     else:
         await query.answer("⚠️ Únete a todos los canales y toca de nuevo «Verificar».", show_alert=True)
@@ -222,8 +225,8 @@ async def _check_member_impl(update: Update, context: ContextTypes.DEFAULT_TYPE)
     # Botón "Unirme" (enlace al primer canal) y Verificar en la misma fila
     first_channel = missing[0].lstrip("@")
     buttons = [
-        InlineKeyboardButton("Unirme", url=f"https://t.me/{first_channel}"),
-        InlineKeyboardButton("Verificar", callback_data="onUnMuteRequest"),
+        InlineKeyboardButton("🔗 Unirme", url=f"https://t.me/{first_channel}"),
+        InlineKeyboardButton("✅ Verificar", callback_data="onUnMuteRequest"),
     ]
     try:
         sent = await bot.send_message(

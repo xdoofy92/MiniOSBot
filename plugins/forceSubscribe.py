@@ -24,7 +24,7 @@ def _escape_html(text: str) -> str:
 _FULL_PERMISSIONS = ChatPermissions(can_send_messages=True)
 
 # Más de este número de mensajes sin verificar → se mutea
-_MSG_LIMIT_BEFORE_MUTE = 5
+_MSG_LIMIT_BEFORE_MUTE = 10
 
 
 async def _on_unmute_request(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -153,7 +153,7 @@ async def _check_member_impl(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 logger.warning("Error al borrar notificación para %s: %s", user_id, e)
         return
 
-    # No está suscrito: borrar mensaje, incrementar contador; si > 5 mensajes → mutear
+    # No está suscrito: borrar mensaje, incrementar contador; si > 10 mensajes → mutear
     try:
         await message.delete()
     except Exception as e:

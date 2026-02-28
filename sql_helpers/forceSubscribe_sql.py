@@ -16,6 +16,68 @@ class forceSubscribe(BASE):
 forceSubscribe.__table__.create(checkfirst=True)
 
 
+class MutedUser(BASE):
+    """Usuarios muteados por el bot en cada chat (para desilenciado masivo con /ForceSubscribe clear)."""
+    __tablename__ = "muted_users"
+    __table_args__ = (PrimaryKeyConstraint("chat_id", "user_id", name="muted_users_pkey"),)
+    chat_id = Column(BigInteger, primary_key=True)
+    user_id = Column(BigInteger, primary_key=True)
+
+    def __init__(self, chat_id, user_id):
+        self.chat_id = int(chat_id)
+        self.user_id = int(user_id)
+
+
+MutedUser.__table__.create(checkfirst=True)
+
+
+def add_muted(chat_id, user_id):
+    """Registra que el bot muteó a este usuario en el chat."""
+    try:
+        cid, uid = int(chat_id), int(user_id)
+        existing = SESSION.query(MutedUser).filter(MutedUser.chat_id == cid, MutedUser.user_id == uid).first()
+        if not existing:
+            SESSION.add(MutedUser(chat_id=cid, user_id=uid))
+            SESSION.commit()
+    except Exception:
+        pass
+    finally:
+        SESSION.close()
+
+
+def remove_muted(chat_id, user_id):
+    """Quita de la lista de muteados (al desmutear por Verificar o clear)."""
+    try:
+        SESSION.query(MutedUser).filter(MutedUser.chat_id == int(chat_id), MutedUser.user_id == int(user_id)).delete()
+        SESSION.commit()
+    except Exception:
+        pass
+    finally:
+        SESSION.close()
+
+
+def get_muted_users(chat_id):
+    """Devuelve la lista de user_id muteados por el bot en este chat."""
+    try:
+        rows = SESSION.query(MutedUser).filter(MutedUser.chat_id == int(chat_id)).all()
+        return [r.user_id for r in rows]
+    except Exception:
+        return []
+    finally:
+        SESSION.close()
+
+
+def clear_muted_for_chat(chat_id):
+    """Borra todos los registros de muteados en este chat (tras desilenciado masivo)."""
+    try:
+        SESSION.query(MutedUser).filter(MutedUser.chat_id == int(chat_id)).delete()
+        SESSION.commit()
+    except Exception:
+        pass
+    finally:
+        SESSION.close()
+
+
 def get_channels(chat_id):
     """Devuelve la lista de canales configurados para el chat (puede ser vacía)."""
     try:

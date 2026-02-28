@@ -21,6 +21,19 @@ def _escape_html(text: str) -> str:
     return str(text).replace("&", "&amp;").replace("<", "&lt;")
 
 
+# Permisos completos para desmutear (solo restrict, nunca ban/unban)
+_FULL_PERMISSIONS = ChatPermissions(
+    can_send_messages=True,
+    can_send_media_messages=True,
+    can_send_polls=True,
+    can_send_other_messages=True,
+    can_add_web_page_previews=True,
+    can_change_info=True,
+    can_invite_users=True,
+    can_pin_messages=True,
+)
+
+
 async def _on_unmute_request(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     if not query or query.data != "onUnMuteRequest":
@@ -47,20 +60,8 @@ async def _on_unmute_request(update: Update, context: ContextTypes.DEFAULT_TYPE)
         if not missing:
             try:
                 # Solo quitar la restricción (desmutear), nunca expulsar/banear a nadie
-                await bot.restrict_chat_member(
-                    chat_id,
-                    user_id,
-                    permissions=ChatPermissions(
-                        can_send_messages=True,
-                        can_send_media_messages=True,
-                        can_send_polls=True,
-                        can_send_other_messages=True,
-                        can_add_web_page_previews=True,
-                        can_change_info=True,
-                        can_invite_users=True,
-                        can_pin_messages=True,
-                    ),
-                )
+                await bot.restrict_chat_member(chat_id, user_id, permissions=_FULL_PERMISSIONS)
+                sql.remove_muted(chat_id, user_id)
                 if query.message and query.message.reply_to_message and query.message.reply_to_message.from_user and query.message.reply_to_message.from_user.id == user_id:
                     try:
                         await query.message.delete()
@@ -183,6 +184,7 @@ async def _check_member_impl(update: Update, context: ContextTypes.DEFAULT_TYPE)
             user_id,
             permissions=ChatPermissions(can_send_messages=False),
         )
+        sql.add_muted(chat_id, user_id)
     except Forbidden as e:
         logger.error("Bot sin permiso para restringir en chat %s: %s", chat_id, e)
         try:
@@ -197,24 +199,22 @@ async def _check_member_impl(update: Update, context: ContextTypes.DEFAULT_TYPE)
         logger.exception("Error al restringir usuario %s en chat %s: %s", user_id, chat_id, e)
         return
 
-    channel_links = ", ".join(f'<a href="https://t.me/{ch}">@{ch}</a>' for ch in missing)
     name_escaped = _escape_html(user.first_name or "Usuario")
     mention = f'<a href="tg://user?id={user_id}">{name_escaped}</a>'
     text = (
         f"{mention}, para participar en este grupo debes unirte al canal del proyecto.\n\n"
-        "🔒 <b>ÚNETE A MI CANAL</b>\n"
-        f"{channel_links}\n\n"
         "🚫 Si no estás suscrito, no podrás enviar mensajes.\n"
-        "🔔 Únete y toca el botón <b>Verificar</b> para poder seguir hablando."
+        "🔔 Únete al canal con el botón de abajo y luego toca <b>Verificar</b>."
     )
+    # Botones: enlace(s) al canal y Verificar en la misma fila
+    buttons = [InlineKeyboardButton(f"@{ch}", url=f"https://t.me/{ch}") for ch in missing]
+    buttons.append(InlineKeyboardButton("Verificar", callback_data="onUnMuteRequest"))
     try:
         await bot.send_message(
             chat_id,
             text,
             parse_mode="HTML",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("Verificar", callback_data="onUnMuteRequest")],
-            ]),
+            reply_markup=InlineKeyboardMarkup([buttons]),
         )
     except Exception as e:
         logger.warning("No se pudo enviar mensaje con enlace: %s", e)
@@ -242,9 +242,20 @@ async def _cmd_forcesubscribe(update: Update, context: ContextTypes.DEFAULT_TYPE
         await message.reply_text("**Suscripción obligatoria desactivada.**", parse_mode="Markdown")
         return
     if first == "clear":
-        await message.reply_text(
-            "En esta versión, los silenciados tienen que tocar el botón **Desilenciarme** después de unirse al canal. No hay desilenciado masivo."
-        )
+        muted_ids = sql.get_muted_users(chat_id)
+        if not muted_ids:
+            await message.reply_text("No hay usuarios silenciados por el bot en este chat.")
+            return
+        bot = context.bot
+        count = 0
+        for uid in muted_ids:
+            try:
+                await bot.restrict_chat_member(chat_id, uid, permissions=_FULL_PERMISSIONS)
+                count += 1
+            except (BadRequest, Forbidden):
+                pass
+        sql.clear_muted_for_chat(chat_id)
+        await message.reply_text(f"**Desilenciado masivo:** se quitaron las restricciones a {count} usuario(s).", parse_mode="Markdown")
         return
 
     if not input_parts:

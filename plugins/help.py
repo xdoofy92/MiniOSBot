@@ -1,6 +1,6 @@
 import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ContextTypes, CommandHandler, CallbackQueryHandler
+from telegram.ext import ContextTypes, CommandHandler, CallbackQueryHandler, MessageHandler, filters
 
 from Config import Config, Messages as tr
 
@@ -40,6 +40,15 @@ async def _start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
 
 
+async def _private_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Cualquier mensaje en privado (foto, texto, etc.) de un no propietario: responder FORK_MSG (sin guardar listas)."""
+    if not update.message or not update.message.from_user or update.message.chat.type != "private":
+        return
+    if _is_owner(update.message.from_user.id):
+        return
+    await update.message.reply_text(Config.FORK_MSG, parse_mode="HTML")
+
+
 async def _help_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     if not query or not query.data or not query.data.startswith("help+"):
@@ -64,4 +73,5 @@ async def _help_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 def register(app):
     app.add_handler(CommandHandler("start", _start))
+    app.add_handler(MessageHandler(filters.ChatType.PRIVATE & ~filters.COMMAND, _private_message))
     app.add_handler(CallbackQueryHandler(_help_callback, pattern="^help\+"))

@@ -1,5 +1,5 @@
 import logging
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ChatPermissions
 from telegram.ext import ContextTypes, MessageHandler, CommandHandler, CallbackQueryHandler, filters
 from telegram.error import BadRequest, Forbidden
 
@@ -21,6 +21,12 @@ def _escape_html(text: str) -> str:
     return str(text).replace("&", "&amp;").replace("<", "&lt;")
 
 
+_FULL_PERMISSIONS = ChatPermissions(can_send_messages=True)
+
+# Más de este número de mensajes sin verificar → se mutea
+_MSG_LIMIT_BEFORE_MUTE = 5
+
+
 async def _on_unmute_request(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Usuario pulsó Verificar: si ya está en el canal, se borra la notificación."""
     query = update.callback_query
@@ -40,6 +46,12 @@ async def _on_unmute_request(update: Update, context: ContextTypes.DEFAULT_TYPE)
         except BadRequest:
             missing.append(ch)
     if not missing:
+        try:
+            await bot.restrict_chat_member(chat_id, user_id, permissions=_FULL_PERMISSIONS)
+        except Exception:
+            pass
+        sql.remove_muted(chat_id, user_id)
+        sql.clear_unverified_count(chat_id, user_id)
         sql.clear_notification_message_id(chat_id, user_id)
         try:
             await query.message.delete()
@@ -124,7 +136,13 @@ async def _check_member_impl(update: Update, context: ContextTypes.DEFAULT_TYPE)
             return
 
     if not missing:
-        # Está suscrito: si tenía notificación pendiente, borrarla (verificación automática)
+        # Está suscrito: verificación automática — desmutear si estaba muteado, borrar notificación, resetear contador
+        try:
+            await bot.restrict_chat_member(chat_id, user_id, permissions=_FULL_PERMISSIONS)
+        except Exception:
+            pass
+        sql.remove_muted(chat_id, user_id)
+        sql.clear_unverified_count(chat_id, user_id)
         old_msg_id = sql.get_notification_message_id(chat_id, user_id)
         if old_msg_id:
             try:
@@ -135,15 +153,28 @@ async def _check_member_impl(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 logger.warning("Error al borrar notificación para %s: %s", user_id, e)
         return
 
-    # No está suscrito: solo borrar su mensaje y enviar notificación si aún no tiene una (sin mute)
-    logger.info("Usuario %s no está en %s → borrar mensaje, enviar notificación", user_id, missing)
-
+    # No está suscrito: borrar mensaje, incrementar contador; si > 5 mensajes → mutear
     try:
         await message.delete()
     except Exception as e:
         logger.warning("No se pudo borrar el mensaje: %s", e)
 
-    # No eliminar la notificación hasta que el usuario se verifique; si ya tiene una, no enviar otra
+    count = sql.increment_unverified_count(chat_id, user_id)
+    if count > _MSG_LIMIT_BEFORE_MUTE:
+        try:
+            await bot.restrict_chat_member(
+                chat_id,
+                user_id,
+                permissions=ChatPermissions(can_send_messages=False),
+            )
+            sql.add_muted(chat_id, user_id)
+            logger.info("Usuario %s muteado tras %s mensajes sin verificar", user_id, count)
+        except Forbidden as e:
+            logger.error("Bot sin permiso para restringir en chat %s: %s", chat_id, e)
+        except Exception as e:
+            logger.warning("Error al mutear %s: %s", user_id, e)
+
+    # Enviar notificación solo si aún no tiene una
     old_msg_id = sql.get_notification_message_id(chat_id, user_id)
     if old_msg_id:
         return
@@ -152,7 +183,7 @@ async def _check_member_impl(update: Update, context: ContextTypes.DEFAULT_TYPE)
     mention = f'<a href="tg://user?id={user_id}">{name_escaped}</a>'
     text = (
         f"{mention}, para participar debes unirte al canal oficial.\n\n"
-        "🚫 Si no estás suscrito, tus mensajes serán eliminados.\n"
+        "🚫 Si no estás suscrito no podrás escribir en el grupo.\n"
         "🔔 Toca <b>Unirme</b> para ir al canal y luego <b>Verificar</b>."
     )
     # Botón "Unirme" (enlace al primer canal) y Verificar en la misma fila
@@ -196,20 +227,29 @@ async def _cmd_forcesubscribe(update: Update, context: ContextTypes.DEFAULT_TYPE
         await message.reply_text("**Suscripción obligatoria desactivada.**", parse_mode="Markdown")
         return
     if first == "clear":
+        muted_ids = sql.get_muted_users(chat_id)
         msg_ids = sql.get_all_notification_message_ids(chat_id)
-        if not msg_ids:
-            await message.reply_text("No hay mensajes de notificación pendientes en este chat.")
+        if not muted_ids and not msg_ids:
+            await message.reply_text("No hay usuarios muteados ni mensajes de notificación en este chat.")
             return
         bot = context.bot
-        count = 0
+        for uid in muted_ids:
+            try:
+                await bot.restrict_chat_member(chat_id, uid, permissions=_FULL_PERMISSIONS)
+            except (BadRequest, Forbidden):
+                pass
+        deleted = 0
         for mid in msg_ids:
             try:
                 await bot.delete_message(chat_id, mid)
-                count += 1
+                deleted += 1
             except (BadRequest, Forbidden):
                 pass
         sql.clear_muted_for_chat(chat_id)
-        await message.reply_text(f"**Clear:** se eliminaron {count} mensaje(s) de notificación.", parse_mode="Markdown")
+        await message.reply_text(
+            f"**Clear:** se desmuteó a los usuarios y se eliminaron {deleted} mensaje(s) de notificación.",
+            parse_mode="Markdown",
+        )
         return
 
     if not input_parts:

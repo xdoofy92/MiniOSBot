@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, BigInteger, PrimaryKeyConstraint
+from sqlalchemy import Column, String, BigInteger, Integer, PrimaryKeyConstraint
 from sql_helpers import SESSION, BASE
 
 
@@ -46,6 +46,84 @@ class NotificationMessage(BASE):
 
 
 NotificationMessage.__table__.create(checkfirst=True)
+
+
+class UnverifiedCount(BASE):
+    """Mensajes enviados sin verificar por (chat_id, user_id). Mute si > 5."""
+    __tablename__ = "unverified_count"
+    __table_args__ = (PrimaryKeyConstraint("chat_id", "user_id", name="unverified_count_pkey"),)
+    chat_id = Column(BigInteger, primary_key=True)
+    user_id = Column(BigInteger, primary_key=True)
+    count = Column(Integer, nullable=False, default=0)
+
+    def __init__(self, chat_id, user_id, count=0):
+        self.chat_id = int(chat_id)
+        self.user_id = int(user_id)
+        self.count = int(count)
+
+
+UnverifiedCount.__table__.create(checkfirst=True)
+
+
+def get_unverified_count(chat_id, user_id):
+    """Devuelve cuántos mensajes ha enviado sin verificar (0 si no existe)."""
+    try:
+        row = SESSION.query(UnverifiedCount).filter(
+            UnverifiedCount.chat_id == int(chat_id),
+            UnverifiedCount.user_id == int(user_id),
+        ).first()
+        return row.count if row else 0
+    except Exception:
+        return 0
+    finally:
+        SESSION.close()
+
+
+def increment_unverified_count(chat_id, user_id):
+    """Incrementa el contador y devuelve el nuevo valor."""
+    try:
+        cid, uid = int(chat_id), int(user_id)
+        row = SESSION.query(UnverifiedCount).filter(
+            UnverifiedCount.chat_id == cid,
+            UnverifiedCount.user_id == uid,
+        ).first()
+        if row:
+            row.count += 1
+            new_count = row.count
+        else:
+            SESSION.add(UnverifiedCount(chat_id=cid, user_id=uid, count=1))
+            new_count = 1
+        SESSION.commit()
+        return new_count
+    except Exception:
+        return 1
+    finally:
+        SESSION.close()
+
+
+def clear_unverified_count(chat_id, user_id):
+    """Resetea el contador al verificar."""
+    try:
+        SESSION.query(UnverifiedCount).filter(
+            UnverifiedCount.chat_id == int(chat_id),
+            UnverifiedCount.user_id == int(user_id),
+        ).delete()
+        SESSION.commit()
+    except Exception:
+        pass
+    finally:
+        SESSION.close()
+
+
+def clear_unverified_count_for_chat(chat_id):
+    """Borra todos los contadores del chat (tras /ForceSubscribe clear)."""
+    try:
+        SESSION.query(UnverifiedCount).filter(UnverifiedCount.chat_id == int(chat_id)).delete()
+        SESSION.commit()
+    except Exception:
+        pass
+    finally:
+        SESSION.close()
 
 
 def get_notification_message_id(chat_id, user_id):
@@ -143,11 +221,12 @@ def get_muted_users(chat_id):
 
 
 def clear_muted_for_chat(chat_id):
-    """Borra todos los registros de muteados y de notificaciones en este chat (tras desilenciado masivo)."""
+    """Borra muteados, notificaciones y contadores de este chat (tras /ForceSubscribe clear)."""
     try:
         cid = int(chat_id)
         SESSION.query(MutedUser).filter(MutedUser.chat_id == cid).delete()
         SESSION.query(NotificationMessage).filter(NotificationMessage.chat_id == cid).delete()
+        SESSION.query(UnverifiedCount).filter(UnverifiedCount.chat_id == cid).delete()
         SESSION.commit()
     except Exception:
         pass

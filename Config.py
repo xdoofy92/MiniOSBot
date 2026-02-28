@@ -59,7 +59,7 @@ class Messages():
 
         "⚙️ **Configuración**\n__Agrégame como admin al grupo y al canal. Solo el creador del grupo puede configurarme. Si no soy admin, me voy del chat.__",
 
-        "📋 **Comandos**\n__/FSub — Ver estado.\n/FSub off — Desactivar.\n/FSub @canal — Activar canal(es).\n/FSub clear — Desilenciar a todos.__",
+        "📋 **Comandos**\n__/FSub — Ver estado.\n/FSub off — Desactivar.\n/FSub @canal — Activar canal(es).\n/FSub clear — Desmutear a todos.__",
 
         "🔗 **Sobre este bot**\n__Es un fork creado por @xdoofy92 para @dprojects. Si quieres descargarlo lo puedes hacer en el siguiente botón.__",
       ]

@@ -32,7 +32,7 @@ async def _start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await update.message.reply_text(Config.FORK_MSG, parse_mode="HTML")
         return
     await update.message.reply_text(
-        tr.START_MSG.format(user.first_name, user.id),
+        tr.START_MSG.format(user.first_name, user.id, Config.VERSION),
         parse_mode="Markdown",
         reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton(text="Continuar", callback_data="help+1")]]),
     )

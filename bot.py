@@ -32,7 +32,7 @@ def main():
 
     # Solo debe correr UNA instancia del bot (evitar telegram.error.Conflict).
     # En Railway: un solo servicio, 1 réplica. No ejecutes el bot en local si ya está en Railway.
-    logging.getLogger(__name__).info("Iniciando bot. Solo debe haber una instancia en ejecución.")
+    logging.getLogger(__name__).info("Iniciando bot v%s. Solo debe haber una instancia en ejecución.", Config.VERSION)
     app.run_polling(
         allowed_updates=["message", "callback_query"],
         drop_pending_updates=True,  # Al arrancar, descarta updates pendientes (evita duplicados tras conflictos).

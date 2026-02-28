@@ -26,6 +26,7 @@ def is_owner(user_id: int) -> bool:
 
 
 class Config():
+  VERSION = "1.0"
   # Token: siempre leer de env (varias posibles claves por compatibilidad con Railway/plataformas)
   BOT_TOKEN = _get_token()
   # Solo el propietario puede usar el bot (pon en OWNER_ID tu user id de Telegram)
@@ -63,4 +64,4 @@ class Messages():
         "🔗 **Sobre este bot**\n__Este es un fork creado por @xdoofy92 para @dprojects. Si quieres descargarlo lo puedes hacer aquí.__",
       ]
 
-      START_MSG = "👋 **Hola [{}](tg://user?id={})**\n__Obligo a los usuarios de tu grupo a unirse a tu canal.__"
+      START_MSG = "👋 **Hola [{}](tg://user?id={})**\n__Obligo a los usuarios de tu grupo a unirse a tu canal.__\n\n_v{}_"

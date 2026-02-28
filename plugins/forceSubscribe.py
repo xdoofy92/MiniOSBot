@@ -53,11 +53,11 @@ async def _on_unmute_request(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 # Solo quitar la restricción (desmutear), nunca expulsar/banear a nadie
                 await bot.restrict_chat_member(chat_id, user_id, permissions=_FULL_PERMISSIONS)
                 sql.remove_muted(chat_id, user_id)
-                if query.message and query.message.reply_to_message and query.message.reply_to_message.from_user and query.message.reply_to_message.from_user.id == user_id:
-                    try:
-                        await query.message.delete()
-                    except Exception:
-                        pass
+                sql.clear_notification_message_id(chat_id, user_id)
+                try:
+                    await query.message.delete()
+                except Exception:
+                    pass
             except Exception:
                 pass
             await query.answer()
@@ -190,23 +190,36 @@ async def _check_member_impl(update: Update, context: ContextTypes.DEFAULT_TYPE)
         logger.exception("Error al restringir usuario %s en chat %s: %s", user_id, chat_id, e)
         return
 
+    # Eliminar la notificación anterior de este usuario (solo una notificación por usuario, la última)
+    old_msg_id = sql.get_notification_message_id(chat_id, user_id)
+    if old_msg_id:
+        try:
+            await bot.delete_message(chat_id, old_msg_id)
+        except Exception:
+            pass
+
     name_escaped = _escape_html(user.first_name or "Usuario")
     mention = f'<a href="tg://user?id={user_id}">{name_escaped}</a>'
     text = (
-        f"{mention}, para participar en este grupo debes unirte al canal del proyecto.\n\n"
+        f"{mention}, para participar debes unirte al canal oficial.\n\n"
         "🚫 Si no estás suscrito, no podrás enviar mensajes.\n"
-        "🔔 Únete al canal con el botón de abajo y luego toca <b>Verificar</b>."
+        "🔔 Toca <b>Unirme</b> para ir al canal y luego <b>Verificar</b>."
     )
-    # Botones: enlace(s) al canal y Verificar en la misma fila
-    buttons = [InlineKeyboardButton(f"@{ch}", url=f"https://t.me/{ch}") for ch in missing]
-    buttons.append(InlineKeyboardButton("Verificar", callback_data="onUnMuteRequest"))
+    # Botón "Unirme" (enlace al primer canal) y Verificar en la misma fila
+    first_channel = missing[0]
+    buttons = [
+        InlineKeyboardButton("Unirme", url=f"https://t.me/{first_channel}"),
+        InlineKeyboardButton("Verificar", callback_data="onUnMuteRequest"),
+    ]
     try:
-        await bot.send_message(
+        sent = await bot.send_message(
             chat_id,
             text,
             parse_mode="HTML",
             reply_markup=InlineKeyboardMarkup([buttons]),
         )
+        if sent and sent.message_id:
+            sql.set_notification_message_id(chat_id, user_id, sent.message_id)
     except Exception as e:
         logger.warning("No se pudo enviar mensaje con enlace: %s", e)
 
@@ -241,6 +254,12 @@ async def _cmd_forcesubscribe(update: Update, context: ContextTypes.DEFAULT_TYPE
         count = 0
         for uid in muted_ids:
             try:
+                old_msg_id = sql.get_notification_message_id(chat_id, uid)
+                if old_msg_id:
+                    try:
+                        await bot.delete_message(chat_id, old_msg_id)
+                    except Exception:
+                        pass
                 await bot.restrict_chat_member(chat_id, uid, permissions=_FULL_PERMISSIONS)
                 count += 1
             except (BadRequest, Forbidden):

@@ -31,6 +31,70 @@ class MutedUser(BASE):
 MutedUser.__table__.create(checkfirst=True)
 
 
+class NotificationMessage(BASE):
+    """Último mensaje de notificación enviado a cada usuario en cada chat (para borrar el anterior)."""
+    __tablename__ = "notification_message"
+    __table_args__ = (PrimaryKeyConstraint("chat_id", "user_id", name="notification_message_pkey"),)
+    chat_id = Column(BigInteger, primary_key=True)
+    user_id = Column(BigInteger, primary_key=True)
+    message_id = Column(BigInteger, nullable=False)
+
+    def __init__(self, chat_id, user_id, message_id):
+        self.chat_id = int(chat_id)
+        self.user_id = int(user_id)
+        self.message_id = int(message_id)
+
+
+NotificationMessage.__table__.create(checkfirst=True)
+
+
+def get_notification_message_id(chat_id, user_id):
+    """Devuelve el message_id del último mensaje de notificación para este usuario en el chat, o None."""
+    try:
+        row = SESSION.query(NotificationMessage).filter(
+            NotificationMessage.chat_id == int(chat_id),
+            NotificationMessage.user_id == int(user_id),
+        ).first()
+        return row.message_id if row else None
+    except Exception:
+        return None
+    finally:
+        SESSION.close()
+
+
+def set_notification_message_id(chat_id, user_id, message_id):
+    """Guarda o actualiza el message_id del mensaje de notificación (uno por usuario por chat)."""
+    try:
+        cid, uid, mid = int(chat_id), int(user_id), int(message_id)
+        existing = SESSION.query(NotificationMessage).filter(
+            NotificationMessage.chat_id == cid,
+            NotificationMessage.user_id == uid,
+        ).first()
+        if existing:
+            existing.message_id = mid
+        else:
+            SESSION.add(NotificationMessage(chat_id=cid, user_id=uid, message_id=mid))
+        SESSION.commit()
+    except Exception:
+        pass
+    finally:
+        SESSION.close()
+
+
+def clear_notification_message_id(chat_id, user_id):
+    """Borra el registro del mensaje de notificación (tras desmutear)."""
+    try:
+        SESSION.query(NotificationMessage).filter(
+            NotificationMessage.chat_id == int(chat_id),
+            NotificationMessage.user_id == int(user_id),
+        ).delete()
+        SESSION.commit()
+    except Exception:
+        pass
+    finally:
+        SESSION.close()
+
+
 def add_muted(chat_id, user_id):
     """Registra que el bot muteó a este usuario en el chat."""
     try:
@@ -68,9 +132,11 @@ def get_muted_users(chat_id):
 
 
 def clear_muted_for_chat(chat_id):
-    """Borra todos los registros de muteados en este chat (tras desilenciado masivo)."""
+    """Borra todos los registros de muteados y de notificaciones en este chat (tras desilenciado masivo)."""
     try:
-        SESSION.query(MutedUser).filter(MutedUser.chat_id == int(chat_id)).delete()
+        cid = int(chat_id)
+        SESSION.query(MutedUser).filter(MutedUser.chat_id == cid).delete()
+        SESSION.query(NotificationMessage).filter(NotificationMessage.chat_id == cid).delete()
         SESSION.commit()
     except Exception:
         pass

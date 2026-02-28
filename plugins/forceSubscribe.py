@@ -88,30 +88,32 @@ async def _check_member(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
 
 async def _check_member_impl(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """
+    Lógica: recibe message → extrae user_id → get_chat_member(canal, user_id).
+    Si no es member/administrator/creator del canal → borra mensaje, aplica restrict (mute), envía enlace.
+    Si está suscrito → no hace nada.
+    """
     message = update.message
     if not message or not message.chat:
         return
     chat_id = message.chat.id
     chat_type = getattr(message.chat, "type", None)
     user = message.from_user
-    user_id = user.id if user else None
-    if chat_type == "private":
+    if chat_type == "private" or not user:
         return
+    user_id = user.id
+    bot = context.bot
+
     try:
         channels = sql.get_channels(int(chat_id))
     except Exception as e:
         logger.exception("Error al obtener canales para chat_id=%s: %s", chat_id, e)
         return
     if not channels:
-        logger.info(
-            "Chat %s sin canales. Usar /ForceSubscribe @canal en el grupo.",
-            chat_id,
-        )
+        logger.info("Chat %s sin canales. Usar /ForceSubscribe @canal en el grupo.", chat_id)
         return
-    if not user:
-        return
-    user_id = user.id
-    bot = context.bot
+
+    # Admins/creador del grupo o lista Admin: no comprobar canal
     try:
         member = await bot.get_chat_member(chat_id, user_id)
     except Exception as e:
@@ -120,40 +122,46 @@ async def _check_member_impl(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if member.status in ("administrator", "creator") or user_id in Config.SUDO_USERS:
         logger.info("Usuario %s no se restringe (es %s o Admin)", user_id, member.status)
         return
+
+    # Comprobar membresía en canal(es): get_chat_member(CHANNEL_ID, user_id)
     missing = []
     for ch in channels:
         ref = _channel_ref(ch)
         try:
-            await bot.get_chat_member(ref, user_id)
+            ch_member = await bot.get_chat_member(ref, user_id)
+            # Si está en el canal (member/administrator/creator) no añadir a missing
+            if ch_member.status not in ("member", "administrator", "creator", "restricted"):
+                missing.append(ch)
         except BadRequest:
+            # Usuario no está en el canal
             missing.append(ch)
         except Forbidden as e:
             logger.warning("Bot no admin en canal %s: %s", ch, e)
-            await message.reply_text(
-                f"No soy administrador en @{ch}. Agrégame como admin ahí e intenta de nuevo. _Me voy del chat…_",
-                parse_mode="Markdown",
-            )
+            try:
+                await message.reply_text(
+                    f"No soy administrador en @{ch}. Agrégame como admin ahí e intenta de nuevo. _Me voy del chat…_",
+                    parse_mode="Markdown",
+                )
+            except Exception:
+                pass
             try:
                 await bot.leave_chat(chat_id)
             except Exception:
                 pass
             return
+
     if not missing:
-        logger.info("Usuario %s ya está en todos los canales %s, no se restringe", user_id, channels)
+        # Está suscrito a todos los canales → no hacer nada
+        logger.info("Usuario %s ya está en todos los canales %s", user_id, channels)
         return
 
-    # Primero mutear (restringir), luego enviar mensaje citando al usuario (HTML evita errores con nombres con _ * etc.)
-    channel_links = ", ".join(f'<a href="https://t.me/{ch}">@{ch}</a>' for ch in missing)
-    name_escaped = _escape_html(user.first_name or "Usuario")
-    mention = f'<a href="tg://user?id={user_id}">{name_escaped}</a>'
-    text = (
-        f"{mention}, para participar en este grupo debes unirte al canal del proyecto.\n\n"
-        "🔒 <b>ÚNETE A MI CANAL</b>\n"
-        f"{channel_links}\n\n"
-        "🚫 Si no estás suscrito, no podrás enviar mensajes.\n"
-        "🔔 Únete y toca el botón <b>Verificar</b> para poder seguir hablando."
-    )
-    logger.info("Mutando usuario %s en chat %s (no está en %s)", user_id, chat_id, missing)
+    # No está suscrito: borrar mensaje, mutear, enviar enlace
+    logger.info("Usuario %s no está en %s → borrar mensaje, mutear, enviar enlace", user_id, missing)
+
+    try:
+        await message.delete()
+    except Exception as e:
+        logger.warning("No se pudo borrar el mensaje: %s", e)
 
     try:
         await bot.restrict_chat_member(
@@ -164,9 +172,9 @@ async def _check_member_impl(update: Update, context: ContextTypes.DEFAULT_TYPE)
     except Forbidden as e:
         logger.error("Bot sin permiso para restringir en chat %s: %s", chat_id, e)
         try:
-            await message.reply_text(
+            await bot.send_message(
+                chat_id,
                 "No tengo permiso para restringir usuarios. Dame permiso de administrador para «restringir miembros» o «banear usuarios».",
-                parse_mode="Markdown",
             )
         except Exception:
             pass
@@ -175,17 +183,27 @@ async def _check_member_impl(update: Update, context: ContextTypes.DEFAULT_TYPE)
         logger.exception("Error al restringir usuario %s en chat %s: %s", user_id, chat_id, e)
         return
 
+    channel_links = ", ".join(f'<a href="https://t.me/{ch}">@{ch}</a>' for ch in missing)
+    name_escaped = _escape_html(user.first_name or "Usuario")
+    mention = f'<a href="tg://user?id={user_id}">{name_escaped}</a>'
+    text = (
+        f"{mention}, para participar en este grupo debes unirte al canal del proyecto.\n\n"
+        "🔒 <b>ÚNETE A MI CANAL</b>\n"
+        f"{channel_links}\n\n"
+        "🚫 Si no estás suscrito, no podrás enviar mensajes.\n"
+        "🔔 Únete y toca el botón <b>Verificar</b> para poder seguir hablando."
+    )
     try:
-        await message.reply_text(
+        await bot.send_message(
+            chat_id,
             text,
             parse_mode="HTML",
-            reply_to_message_id=message.message_id,
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("Verificar", callback_data="onUnMuteRequest")],
             ]),
         )
     except Exception as e:
-        logger.warning("No se pudo enviar mensaje de aviso (usuario ya muteado): %s", e)
+        logger.warning("No se pudo enviar mensaje con enlace: %s", e)
 
 
 async def _cmd_forcesubscribe(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

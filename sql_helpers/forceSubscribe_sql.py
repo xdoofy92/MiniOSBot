@@ -1,11 +1,11 @@
-from sqlalchemy import Column, String, Numeric, PrimaryKeyConstraint
+from sqlalchemy import Column, String, BigInteger, PrimaryKeyConstraint
 from sql_helpers import SESSION, BASE
 
 
 class forceSubscribe(BASE):
     __tablename__ = "forceSubscribe"
     __table_args__ = (PrimaryKeyConstraint("chat_id", "channel", name="forceSubscribe_pkey"),)
-    chat_id = Column(Numeric, primary_key=True)
+    chat_id = Column(BigInteger, primary_key=True)  # BigInteger evita SAWarning con SQLite y es correcto para IDs de Telegram
     channel = Column(String, primary_key=True)
 
     def __init__(self, chat_id, channel):

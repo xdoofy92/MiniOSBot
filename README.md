@@ -34,6 +34,12 @@ pip3 install -r requirements.txt
 ### Configuration
 Solo necesitas el **token del bot** ([@BotFather](https://t.me/botfather)). En Railway define la variable **tok3n** con ese token. Opcional: **SUDO_USERS** (IDs separados por espacios), **DATABASE_URL** (PostgreSQL). No se requiere APP_ID ni API_HASH (usa [python-telegram-bot](https://github.com/python-telegram-bot/python-telegram-bot)).
 
+### Importante: una sola instancia (evitar error «Conflict»)
+Telegram solo permite **una** conexión de polling por bot. Si ves `telegram.error.Conflict: terminated by other getUpdates request`:
+- **Railway:** en el servicio del bot, deja **1 réplica** (Settings → Replicas = 1). No dupliques el servicio.
+- **No ejecutes el bot en tu PC** si ya está desplegado en Railway (o al revés). Solo uno debe estar encendido.
+- Si cambias de entorno, espera unos segundos antes de arrancar el otro.
+
 ### Para que el bot mute y avise en el grupo
 1. **En el grupo:** el bot debe ser **administrador** con permiso **«Restringir miembros»** o **«Banear usuarios»**.
 2. **En el canal:** el bot debe ser **administrador** para poder comprobar suscripciones.

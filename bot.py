@@ -30,7 +30,13 @@ def main():
     forceSubscribe.register(app)
     help_plugin.register(app)
 
-    app.run_polling(allowed_updates=["message", "callback_query"])
+    # Solo debe correr UNA instancia del bot (evitar telegram.error.Conflict).
+    # En Railway: un solo servicio, 1 réplica. No ejecutes el bot en local si ya está en Railway.
+    logging.getLogger(__name__).info("Iniciando bot. Solo debe haber una instancia en ejecución.")
+    app.run_polling(
+        allowed_updates=["message", "callback_query"],
+        drop_pending_updates=True,  # Al arrancar, descarta updates pendientes (evita duplicados tras conflictos).
+    )
 
 
 if __name__ == "__main__":

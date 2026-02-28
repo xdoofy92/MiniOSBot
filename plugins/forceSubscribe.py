@@ -50,7 +50,7 @@ async def _on_unmute_request(update: Update, context: ContextTypes.DEFAULT_TYPE)
             await query.answer()
         else:
             await query.answer(
-                "Únete a todos los canales indicados y toca de nuevo «Desilenciarme».",
+                "Únete a todos los canales indicados y toca de nuevo «Verificar».",
                 show_alert=True,
             )
         return
@@ -80,6 +80,10 @@ async def _check_member(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     chat_id = message.chat.id
     channels = sql.get_channels(chat_id)
     if not channels:
+        logger.info(
+            "Chat %s sin canales configurados. El creador debe usar /ForceSubscribe @canal en el grupo.",
+            chat_id,
+        )
         return
     user = message.from_user
     if not user:
@@ -112,17 +116,20 @@ async def _check_member(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     if not missing:
         return
     channel_links = ", ".join(f"[{ch}](https://t.me/{ch})" for ch in missing)
-    name = f"[{user.first_name}](tg://user?id={user.id})" if user else "Tú"
     text = (
-        f"{name}, todavía **no te uniste** a los canales obligatorios. "
-        f"Únete aquí: {channel_links} y toca el botón de abajo para desilenciarte."
+        "🔒 ÚNETE A MI CANAL\n"
+        "Para participar en este grupo debes unirte al canal del proyecto también.\n"
+        f"{channel_links}\n\n"
+        "🚫 Si no estás suscrito, no podrás enviar mensajes.\n"
+        "🔔 Podrás desilenciarte automáticamente al unirte y tocar el botón de verificación."
     )
+    logger.info("Restringiendo usuario %s en chat %s por no estar en: %s", user_id, chat_id, missing)
     try:
         await message.reply_text(
             text,
             parse_mode="Markdown",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("Desilenciarme", callback_data="onUnMuteRequest")],
+                [InlineKeyboardButton("Verificar", callback_data="onUnMuteRequest")],
             ]),
         )
         await bot.restrict_chat_member(
@@ -209,5 +216,11 @@ async def _cmd_forcesubscribe(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 def register(app):
     app.add_handler(CallbackQueryHandler(_on_unmute_request, pattern="^onUnMuteRequest$"))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & filters.ChatType.GROUPS, _check_member))
+    # Cualquier mensaje (texto, foto, etc.) en grupo o supergroup, excepto comandos
+    app.add_handler(
+        MessageHandler(
+            (filters.ChatType.GROUP | filters.ChatType.SUPERGROUP) & ~filters.COMMAND,
+            _check_member,
+        )
+    )
     app.add_handler(CommandHandler(["forcesubscribe", "fsub"], _cmd_forcesubscribe))

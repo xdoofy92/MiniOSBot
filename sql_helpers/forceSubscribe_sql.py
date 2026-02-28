@@ -82,7 +82,7 @@ def set_notification_message_id(chat_id, user_id, message_id):
 
 
 def clear_notification_message_id(chat_id, user_id):
-    """Borra el registro del mensaje de notificación (tras desmutear)."""
+    """Borra el registro del mensaje de notificación (tras verificar)."""
     try:
         SESSION.query(NotificationMessage).filter(
             NotificationMessage.chat_id == int(chat_id),
@@ -91,6 +91,17 @@ def clear_notification_message_id(chat_id, user_id):
         SESSION.commit()
     except Exception:
         pass
+    finally:
+        SESSION.close()
+
+
+def get_all_notification_message_ids(chat_id):
+    """Devuelve todos los message_id de notificaciones en este chat (para /ForceSubscribe clear)."""
+    try:
+        rows = SESSION.query(NotificationMessage).filter(NotificationMessage.chat_id == int(chat_id)).all()
+        return [r.message_id for r in rows]
+    except Exception:
+        return []
     finally:
         SESSION.close()
 

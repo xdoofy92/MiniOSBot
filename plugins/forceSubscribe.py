@@ -1,5 +1,5 @@
 import logging
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ChatPermissions
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, MessageHandler, CommandHandler, CallbackQueryHandler, filters
 from telegram.error import BadRequest, Forbidden
 
@@ -21,11 +21,8 @@ def _escape_html(text: str) -> str:
     return str(text).replace("&", "&amp;").replace("<", "&lt;")
 
 
-# Para desmutear: solo permitir enviar mensajes (compatible con todas las versiones de PTB)
-_FULL_PERMISSIONS = ChatPermissions(can_send_messages=True)
-
-
 async def _on_unmute_request(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Usuario pulsó Verificar: si ya está en el canal, se borra la notificación."""
     query = update.callback_query
     if not query or query.data != "onUnMuteRequest":
         return
@@ -35,55 +32,25 @@ async def _on_unmute_request(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if not channels:
         return
     bot = context.bot
-    try:
-        member = await bot.get_chat_member(chat_id, user_id)
-    except (BadRequest, Forbidden):
-        return
-    # Si está restringido (muteado), comprobar si ya se unió a todos los canales
-    if member.status == "restricted" and not getattr(member, "can_send_messages", True):
-        missing = []
-        for ch in channels:
-            ref = _channel_ref(ch)
-            try:
-                await bot.get_chat_member(ref, user_id)
-            except BadRequest:
-                missing.append(ch)
-        if not missing:
-            try:
-                # Solo quitar la restricción (desmutear), nunca expulsar/banear a nadie
-                await bot.restrict_chat_member(chat_id, user_id, permissions=_FULL_PERMISSIONS)
-                sql.remove_muted(chat_id, user_id)
-                sql.clear_notification_message_id(chat_id, user_id)
-                try:
-                    await query.message.delete()
-                except Exception:
-                    pass
-            except Exception:
-                pass
-            await query.answer()
-        else:
-            await query.answer(
-                "Únete a todos los canales indicados y toca de nuevo «Verificar».",
-                show_alert=True,
-            )
-        return
-    if member.status != "restricted":
+    missing = []
+    for ch in channels:
+        ref = _channel_ref(ch)
         try:
-            me = await bot.get_chat_member(chat_id, (await bot.get_me()).id)
-            if me.status not in ("administrator", "creator"):
-                name = query.from_user.first_name if query.from_user else "User"
-                await context.bot.send_message(
-                    chat_id,
-                    f"**{name}** quiere desilenciarse pero no puedo (no soy admin). _Me voy del chat…_",
-                    parse_mode="Markdown",
-                )
-                await bot.leave_chat(chat_id)
-            else:
-                await query.answer("No toques el botón si ya puedes hablar.", show_alert=True)
+            await bot.get_chat_member(ref, user_id)
+        except BadRequest:
+            missing.append(ch)
+    if not missing:
+        sql.clear_notification_message_id(chat_id, user_id)
+        try:
+            await query.message.delete()
         except Exception:
-            await query.answer("No toques el botón si ya puedes hablar.", show_alert=True)
+            pass
+        await query.answer("Verificado. Ya puedes participar.", show_alert=False)
     else:
-        await query.answer("Te silenciaron los admins por otro motivo.", show_alert=True)
+        await query.answer(
+            "Únete a todos los canales indicados y toca de nuevo «Verificar».",
+            show_alert=True,
+        )
 
 
 async def _check_member(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -96,8 +63,8 @@ async def _check_member(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 async def _check_member_impl(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
     Lógica: recibe message → extrae user_id → get_chat_member(canal, user_id).
-    Si no es member/administrator/creator del canal → borra mensaje, aplica restrict (mute), envía enlace.
-    Si está suscrito → no hace nada.
+    Si no está en el canal → solo borra su mensaje y envía notificación (sin mute).
+    Si está suscrito → borra la notificación si tenía una.
     """
     message = update.message
     if not message or not message.chat:
@@ -157,58 +124,24 @@ async def _check_member_impl(update: Update, context: ContextTypes.DEFAULT_TYPE)
             return
 
     if not missing:
-        # Está suscrito a todos los canales
-        if member.status == "restricted":
-            # Verificación automática: ya se unió al canal, desmutear y borrar notificación
+        # Está suscrito: si tenía notificación pendiente, borrarla (verificación automática)
+        old_msg_id = sql.get_notification_message_id(chat_id, user_id)
+        if old_msg_id:
             try:
-                await bot.restrict_chat_member(chat_id, user_id, permissions=_FULL_PERMISSIONS)
-                sql.remove_muted(chat_id, user_id)
-                old_msg_id = sql.get_notification_message_id(chat_id, user_id)
-                if old_msg_id:
-                    try:
-                        await bot.delete_message(chat_id, old_msg_id)
-                    except Exception:
-                        pass
+                await bot.delete_message(chat_id, old_msg_id)
                 sql.clear_notification_message_id(chat_id, user_id)
-                try:
-                    await message.delete()
-                except Exception:
-                    pass
                 logger.info("Usuario %s verificado automáticamente (ya está en el canal)", user_id)
             except Exception as e:
-                logger.warning("Error en verificación automática para %s: %s", user_id, e)
-        else:
-            logger.info("Usuario %s ya está en todos los canales %s", user_id, channels)
+                logger.warning("Error al borrar notificación para %s: %s", user_id, e)
         return
 
-    # No está suscrito: borrar mensaje, mutear, y solo enviar notificación si aún no tiene una (no reemplazar)
-    logger.info("Usuario %s no está en %s → borrar mensaje, mutear, enviar enlace", user_id, missing)
+    # No está suscrito: solo borrar su mensaje y enviar notificación si aún no tiene una (sin mute)
+    logger.info("Usuario %s no está en %s → borrar mensaje, enviar notificación", user_id, missing)
 
     try:
         await message.delete()
     except Exception as e:
         logger.warning("No se pudo borrar el mensaje: %s", e)
-
-    try:
-        await bot.restrict_chat_member(
-            chat_id,
-            user_id,
-            permissions=ChatPermissions(can_send_messages=False),
-        )
-        sql.add_muted(chat_id, user_id)
-    except Forbidden as e:
-        logger.error("Bot sin permiso para restringir en chat %s: %s", chat_id, e)
-        try:
-            await bot.send_message(
-                chat_id,
-                "No tengo permiso para restringir usuarios. Dame permiso de administrador para «restringir miembros» o «banear usuarios».",
-            )
-        except Exception:
-            pass
-        return
-    except Exception as e:
-        logger.exception("Error al restringir usuario %s en chat %s: %s", user_id, chat_id, e)
-        return
 
     # No eliminar la notificación hasta que el usuario se verifique; si ya tiene una, no enviar otra
     old_msg_id = sql.get_notification_message_id(chat_id, user_id)
@@ -219,7 +152,7 @@ async def _check_member_impl(update: Update, context: ContextTypes.DEFAULT_TYPE)
     mention = f'<a href="tg://user?id={user_id}">{name_escaped}</a>'
     text = (
         f"{mention}, para participar debes unirte al canal oficial.\n\n"
-        "🚫 Si no estás suscrito, no podrás enviar mensajes.\n"
+        "🚫 Si no estás suscrito, tus mensajes serán eliminados.\n"
         "🔔 Toca <b>Unirme</b> para ir al canal y luego <b>Verificar</b>."
     )
     # Botón "Unirme" (enlace al primer canal) y Verificar en la misma fila
@@ -263,26 +196,20 @@ async def _cmd_forcesubscribe(update: Update, context: ContextTypes.DEFAULT_TYPE
         await message.reply_text("**Suscripción obligatoria desactivada.**", parse_mode="Markdown")
         return
     if first == "clear":
-        muted_ids = sql.get_muted_users(chat_id)
-        if not muted_ids:
-            await message.reply_text("No hay usuarios silenciados por el bot en este chat.")
+        msg_ids = sql.get_all_notification_message_ids(chat_id)
+        if not msg_ids:
+            await message.reply_text("No hay mensajes de notificación pendientes en este chat.")
             return
         bot = context.bot
         count = 0
-        for uid in muted_ids:
+        for mid in msg_ids:
             try:
-                old_msg_id = sql.get_notification_message_id(chat_id, uid)
-                if old_msg_id:
-                    try:
-                        await bot.delete_message(chat_id, old_msg_id)
-                    except Exception:
-                        pass
-                await bot.restrict_chat_member(chat_id, uid, permissions=_FULL_PERMISSIONS)
+                await bot.delete_message(chat_id, mid)
                 count += 1
             except (BadRequest, Forbidden):
                 pass
         sql.clear_muted_for_chat(chat_id)
-        await message.reply_text(f"**Desilenciado masivo:** se quitaron las restricciones a {count} usuario(s).", parse_mode="Markdown")
+        await message.reply_text(f"**Clear:** se eliminaron {count} mensaje(s) de notificación.", parse_mode="Markdown")
         return
 
     if not input_parts:

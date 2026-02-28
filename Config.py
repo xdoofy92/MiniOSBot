@@ -42,11 +42,11 @@ class Config():
   # Mensaje para quien no sea el propietario (con botones de descarga)
   FORK_MSG = (
     "Este bot es un fork exclusivo para @dprojects. "
-    "Si quieres usarlo en tus grupos te dejo las descargas."
+    "Si quieres usarlo te dejo las descargas."
   )
   # Botones (texto, url) para el mensaje de no propietario: una fila, dos botones
   FORK_BUTTONS = (
-    ("Fork Doofy", "https://github.com/xdoofy92/MiniOSBot"),
+    ("Bot Doofy", "https://github.com/xdoofy92/MiniOSBot"),
     ("Bot Viperadnan", "https://github.com/viperadnan-git/force-subscribe-telegram-bot"),
   )
 

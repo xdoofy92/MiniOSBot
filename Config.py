@@ -18,6 +18,13 @@ def _get_owner_id():
     return int(raw)
 
 
+def is_owner(user_id: int) -> bool:
+    """True si el usuario es el propietario del bot o si OWNER_ID no está configurado."""
+    if Config.OWNER_ID is None:
+        return True
+    return user_id == Config.OWNER_ID
+
+
 class Config():
   # Token: siempre leer de env (varias posibles claves por compatibilidad con Railway/plataformas)
   BOT_TOKEN = _get_token()
@@ -40,15 +47,18 @@ class Config():
   )
 
 
+Config.is_owner = is_owner  # Uso: Config.is_owner(user_id)
+
+
 class Messages():
       HELP_MSG = [
         ".",
 
-        "**Suscripción obligatoria**\n__Obligo a los miembros del grupo a unirse a uno o más canales antes de escribir.\nSilencio a quien no se haya unido; pueden desilenciarse uniéndose y tocando el botón.__",
+        "📌 **Suscripción obligatoria**\n__Obligo a miembros a unirse al canal antes de escribir. Quien no se una queda silenciado; al unirse y tocar Verificar se desilencia.__",
 
-        "**Configuración**\n__Primero agrégame al grupo como administrador (con permiso de banear) y al canal como administrador.\nSolo el creador del grupo puede configurarme; me voy del chat si no soy admin.__",
+        "⚙️ **Configuración**\n__Agrégame como admin al grupo y al canal. Solo el creador del grupo puede configurarme. Si no soy admin, me voy del chat.__",
 
-        "**Comandos**\n__/ForceSubscribe - Ver configuración actual.\n/ForceSubscribe off - Desactivar.\n/ForceSubscribe @canal (o varios @c1 @c2) - Activar y elegir canal(es).\n/ForceSubscribe clear - Mensaje para desilenciar.\n\n/FSub es un atajo de /ForceSubscribe.__",
+        "📋 **Comandos**\n__/ForceSubscribe — Ver estado.\n/ForceSubscribe off — Desactivar.\n/ForceSubscribe @canal — Activar canal(es).\n/ForceSubscribe clear — Desilenciar a todos.\n\n/FSub = atajo.__",
       ]
 
-      START_MSG = "**Hola [{}](tg://user?id={})**\n__Obligare a los usuarios de tu grupo unirse a tu canal.__"
+      START_MSG = "👋 **Hola [{}](tg://user?id={})**\n__Obligo a los usuarios de tu grupo a unirse a tu canal.__"

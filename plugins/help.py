@@ -9,42 +9,36 @@ logger = logging.getLogger(__name__)
 
 def _help_buttons(pos: int):
     if pos == 1:
-        return [[InlineKeyboardButton(text="Siguiente →", callback_data="help+2")]]
+        return [[InlineKeyboardButton(text="Continuar", callback_data="help+2")]]
     if pos == len(tr.HELP_MSG) - 1:
         return [[InlineKeyboardButton(text="← Anterior", callback_data=f"help+{pos-1}")]]
     return [
         [
             InlineKeyboardButton(text="← Anterior", callback_data=f"help+{pos-1}"),
-            InlineKeyboardButton(text="Siguiente →", callback_data=f"help+{pos+1}"),
+            InlineKeyboardButton(text="Continuar", callback_data=f"help+{pos+1}"),
         ],
     ]
-
-
-def _is_owner(user_id: int) -> bool:
-    if Config.OWNER_ID is None:
-        return True
-    return user_id == Config.OWNER_ID
 
 
 async def _start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not update.message or not update.message.from_user:
         return
     user = update.message.from_user
-    if not _is_owner(user.id):
+    if not Config.is_owner(user.id):
         await update.message.reply_text(Config.FORK_MSG, parse_mode="HTML")
         return
     await update.message.reply_text(
         tr.START_MSG.format(user.first_name, user.id),
         parse_mode="Markdown",
-        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton(text="Opciones", callback_data="help+1")]]),
+        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton(text="Continuar", callback_data="help+1")]]),
     )
 
 
 async def _private_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Cualquier mensaje en privado (foto, texto, etc.) de un no propietario: responder FORK_MSG (sin guardar listas)."""
-    if not update.message or not update.message.from_user or update.message.chat.type != "private":
+    if not update.message or not update.message.from_user:
         return
-    if _is_owner(update.message.from_user.id):
+    if Config.is_owner(update.message.from_user.id):
         return
     await update.message.reply_text(Config.FORK_MSG, parse_mode="HTML")
 
@@ -53,7 +47,7 @@ async def _help_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     query = update.callback_query
     if not query or not query.data or not query.data.startswith("help+"):
         return
-    if query.from_user and not _is_owner(query.from_user.id):
+    if query.from_user and not Config.is_owner(query.from_user.id):
         await query.answer(Config.FORK_MSG, show_alert=True)
         return
     await query.answer()

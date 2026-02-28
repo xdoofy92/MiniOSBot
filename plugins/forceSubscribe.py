@@ -57,12 +57,9 @@ async def _on_unmute_request(update: Update, context: ContextTypes.DEFAULT_TYPE)
             await query.message.delete()
         except Exception:
             pass
-        await query.answer("Verificado. Ya puedes participar.", show_alert=False)
+        await query.answer("✅ Verificado. Ya puedes participar.", show_alert=False)
     else:
-        await query.answer(
-            "Únete a todos los canales indicados y toca de nuevo «Verificar».",
-            show_alert=True,
-        )
+        await query.answer("⚠️ Únete a todos los canales y toca de nuevo «Verificar».", show_alert=True)
 
 
 async def _check_member(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -85,13 +82,15 @@ async def _check_member_impl(update: Update, context: ContextTypes.DEFAULT_TYPE)
     chat_type = getattr(message.chat, "type", None)
     bot = context.bot
 
-    # Si acaban de añadir al bot al grupo y no es el propietario, avisar y salir
+    # Si acaban de añadir al bot al grupo y no es el propietario, avisar y salir (get_me solo si hay nuevos miembros)
     new_members = getattr(message, "new_chat_members", None) or []
-    try:
-        me = await bot.get_me()
-        bot_added = any(getattr(m, "id", None) == me.id for m in new_members)
-    except Exception:
-        bot_added = False
+    bot_added = False
+    if new_members:
+        try:
+            me = await bot.get_me()
+            bot_added = any(getattr(m, "id", None) == me.id for m in new_members)
+        except Exception:
+            pass
     if bot_added:
         adder = getattr(message, "from_user", None)
         adder_id = adder.id if adder else None
@@ -117,7 +116,6 @@ async def _check_member_impl(update: Update, context: ContextTypes.DEFAULT_TYPE)
         logger.exception("Error al obtener canales para chat_id=%s: %s", chat_id, e)
         return
     if not channels:
-        logger.info("Chat %s sin canales. Usar /ForceSubscribe @canal en el grupo.", chat_id)
         return
 
     # Si el mensaje lo envía el propio canal (ej. publicación en grupo vinculado), no borrar ni verificar
@@ -136,7 +134,6 @@ async def _check_member_impl(update: Update, context: ContextTypes.DEFAULT_TYPE)
         logger.warning("No se pudo obtener miembro chat=%s user=%s: %s", chat_id, user_id, e)
         return
     if member.status in ("administrator", "creator") or user_id in Config.SUDO_USERS:
-        logger.info("Usuario %s no se restringe (es %s o Admin)", user_id, member.status)
         return
 
     # Comprobar membresía en canal(es): get_chat_member(CHANNEL_ID, user_id)
@@ -155,7 +152,7 @@ async def _check_member_impl(update: Update, context: ContextTypes.DEFAULT_TYPE)
             logger.warning("Bot no admin en canal %s: %s", ch, e)
             try:
                 await message.reply_text(
-                    f"No soy administrador en @{ch}. Agrégame como admin ahí e intenta de nuevo. _Me voy del chat…_",
+                    f"⚠️ No soy admin en @{ch}. Agrégame como admin ahí. _Me voy del chat…_",
                     parse_mode="Markdown",
                 )
             except Exception:
@@ -213,12 +210,12 @@ async def _check_member_impl(update: Update, context: ContextTypes.DEFAULT_TYPE)
     name_escaped = _escape_html(user.first_name or "Usuario")
     mention = f'<a href="tg://user?id={user_id}">{name_escaped}</a>'
     text = (
-        f"{mention}, para participar debes unirte al canal oficial.\n\n"
-        "🚫 Si no estás suscrito no podrás escribir en el grupo.\n"
-        "🔔 Toca <b>Unirme</b> para ir al canal y luego <b>Verificar</b>."
+        f"{mention}, para participar únete al canal.\n\n"
+        "🚫 Sin suscripción no podrás escribir.\n"
+        "🔔 Toca <b>Unirme</b> y luego <b>Verificar</b>."
     )
     # Botón "Unirme" (enlace al primer canal) y Verificar en la misma fila
-    first_channel = missing[0]
+    first_channel = missing[0].lstrip("@")
     buttons = [
         InlineKeyboardButton("Unirme", url=f"https://t.me/{first_channel}"),
         InlineKeyboardButton("Verificar", callback_data="onUnMuteRequest"),
@@ -236,26 +233,20 @@ async def _check_member_impl(update: Update, context: ContextTypes.DEFAULT_TYPE)
         logger.warning("No se pudo enviar mensaje con enlace: %s", e)
 
 
-def _is_owner(user_id: int) -> bool:
-    if Config.OWNER_ID is None:
-        return True
-    return user_id == Config.OWNER_ID
-
-
 async def _cmd_forcesubscribe(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     message = update.message
     if not message or not message.from_user or not message.chat or message.chat.type == "private":
         return
-    if not _is_owner(message.from_user.id):
+    if not Config.is_owner(message.from_user.id):
         await message.reply_text(Config.FORK_MSG, parse_mode="HTML")
         return
     try:
         member = await context.bot.get_chat_member(message.chat.id, message.from_user.id)
     except Exception:
-        await message.reply_text("No pude verificar tu rol.")
+        await message.reply_text("⚠️ No pude verificar tu rol.")
         return
     if member.status != "creator" and message.from_user.id not in Config.SUDO_USERS:
-        await message.reply_text("**Solo el creador del grupo** (o un Admin) puede hacer esto.", parse_mode="Markdown")
+        await message.reply_text("🔒 Solo el creador del grupo (o Admin) puede usar esto.", parse_mode="Markdown")
         return
     chat_id = message.chat.id
     args = (context.args or [])
@@ -264,13 +255,13 @@ async def _cmd_forcesubscribe(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     if first in ("off", "no", "disable"):
         sql.disapprove(chat_id)
-        await message.reply_text("**Suscripción obligatoria desactivada.**", parse_mode="Markdown")
+        await message.reply_text("✅ Suscripción obligatoria desactivada.", parse_mode="Markdown")
         return
     if first == "clear":
         muted_ids = sql.get_muted_users(chat_id)
         msg_ids = sql.get_all_notification_message_ids(chat_id)
         if not muted_ids and not msg_ids:
-            await message.reply_text("No hay usuarios muteados ni mensajes de notificación en este chat.")
+            await message.reply_text("ℹ️ No hay muteados ni notificaciones en este chat.")
             return
         bot = context.bot
         for uid in muted_ids:
@@ -287,7 +278,7 @@ async def _cmd_forcesubscribe(update: Update, context: ContextTypes.DEFAULT_TYPE
                 pass
         sql.clear_muted_for_chat(chat_id)
         await message.reply_text(
-            f"**Clear:** se desmuteó a los usuarios y se eliminaron {deleted} mensaje(s) de notificación.",
+            f"✅ Desmuteados y eliminados {deleted} mensaje(s) de notificación.",
             parse_mode="Markdown",
         )
         return
@@ -297,36 +288,43 @@ async def _cmd_forcesubscribe(update: Update, context: ContextTypes.DEFAULT_TYPE
         if channels:
             channels_links = ", ".join(f"[{c}](https://t.me/{c})" for c in channels)
             await message.reply_text(
-                f"**Suscripción obligatoria activa.** Canal(es) requeridos: {channels_links}",
+                f"📌 Activo. Canal(es): {channels_links}",
                 parse_mode="Markdown",
             )
         else:
-            await message.reply_text("**Suscripción obligatoria desactivada** en este chat.", parse_mode="Markdown")
+            await message.reply_text("ℹ️ Suscripción obligatoria desactivada.", parse_mode="Markdown")
         return
 
     channels_to_set = [p for p in input_parts if p.lower() not in ("off", "no", "disable", "clear")]
     if not channels_to_set:
-        await message.reply_text("Indica al menos un canal (ej: /ForceSubscribe @canal).")
+        await message.reply_text("⚠️ Indica al menos un canal (ej: /ForceSubscribe @canal).")
         return
     failed = []
+    try:
+        bot_id = (await context.bot.get_me()).id
+    except Exception:
+        bot_id = None
     for ch in channels_to_set:
+        if not bot_id:
+            failed.append(ch)
+            continue
         ref = _channel_ref(ch)
         try:
-            await context.bot.get_chat_member(ref, (await context.bot.get_me()).id)
+            await context.bot.get_chat_member(ref, bot_id)
         except BadRequest:
             failed.append(ch)
         except Forbidden:
             failed.append(ch)
     if failed:
         await message.reply_text(
-            f"Canales inválidos o no soy admin en: {', '.join('@' + c for c in failed)}. "
-            "Agrégame como admin en el/los canal(es) y usa nombres válidos."
+            f"⚠️ Inválidos o no soy admin: {', '.join('@' + c for c in failed)}. "
+            "Agrégame como admin en el canal."
         )
         return
     sql.set_channels(chat_id, channels_to_set)
     channels_links = ", ".join(f"[{c}](https://t.me/{c})" for c in channels_to_set)
     await message.reply_text(
-        f"**Suscripción obligatoria activada.** Los miembros tienen que unirse a: {channels_links}",
+        f"✅ Activado. Miembros deben unirse a: {channels_links}",
         parse_mode="Markdown",
     )
 

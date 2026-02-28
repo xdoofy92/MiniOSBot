@@ -12,8 +12,8 @@ def _help_buttons(pos: int):
         return [[InlineKeyboardButton(text="Siguiente →", callback_data="help+2")]]
     if pos == len(tr.HELP_MSG) - 1:
         return [
-            [InlineKeyboardButton(text="Chat de soporte", url="https://t.me/ViperCommunity")],
-            [InlineKeyboardButton(text="Sugerencias e issues", url="https://github.com/viperadnan-git/force-subscribe-telegram-bot/issues/new")],
+            [InlineKeyboardButton(text="Soporte del Bot", url="https://t.me/ViperCommunity")],
+            [InlineKeyboardButton(text="Sugerencias y Bugs", url="https://github.com/viperadnan-git/force-subscribe-telegram-bot/issues/new")],
             [InlineKeyboardButton(text="← Anterior", callback_data=f"help+{pos-1}")],
         ]
     return [

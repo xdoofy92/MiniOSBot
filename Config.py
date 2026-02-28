@@ -33,7 +33,7 @@ class Messages():
 
         "**Comandos**\n__/ForceSubscribe - Ver configuración actual.\n/ForceSubscribe off - Desactivar.\n/ForceSubscribe @canal (o varios @c1 @c2) - Activar y elegir canal(es).\n/ForceSubscribe clear - Mensaje para desilenciar.\n\n/FSub es un atajo de /ForceSubscribe.__",
 
-        "**Desarrollado por @viperadnan**"
+        "**Un mod creado por @xdoofy92 del proyecto de @viperadnan**"
       ]
 
       START_MSG = "**Hola [{}](tg://user?id={})**\n__Puedo obligar a los miembros a unirse a un canal antes de escribir en el grupo.\nMás info en /help__"

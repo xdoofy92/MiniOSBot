@@ -50,7 +50,7 @@ async def _on_unmute_request(update: Update, context: ContextTypes.DEFAULT_TYPE)
             await query.answer()
         else:
             await query.answer(
-                "❗ Join all the required channel(s) and press 'UnMute Me' again.",
+                "Únete a todos los canales indicados y toca de nuevo «Desilenciarme».",
                 show_alert=True,
             )
         return
@@ -61,16 +61,16 @@ async def _on_unmute_request(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 name = query.from_user.first_name if query.from_user else "User"
                 await context.bot.send_message(
                     chat_id,
-                    f"**{name}** is trying to UnMute himself but I can't (I'm not admin). _#Leaving this chat..._",
+                    f"**{name}** quiere desilenciarse pero no puedo (no soy admin). _Me voy del chat…_",
                     parse_mode="Markdown",
                 )
                 await bot.leave_chat(chat_id)
             else:
-                await query.answer("❗ Don't click the button if you can already speak.", show_alert=True)
+                await query.answer("No toques el botón si ya puedes hablar.", show_alert=True)
         except Exception:
-            await query.answer("❗ Don't click the button if you can already speak.", show_alert=True)
+            await query.answer("No toques el botón si ya puedes hablar.", show_alert=True)
     else:
-        await query.answer("❗ You are muted by admins for other reasons.", show_alert=True)
+        await query.answer("Te silenciaron los admins por otro motivo.", show_alert=True)
 
 
 async def _check_member(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -101,7 +101,7 @@ async def _check_member(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             missing.append(ch)
         except Forbidden:
             await message.reply_text(
-                f"**I am not an admin** in @{ch}. Add me as admin there and try again. _#Leaving..._",
+                f"No soy administrador en @{ch}. Agrégame como admin ahí e intenta de nuevo. _Me voy del chat…_",
                 parse_mode="Markdown",
             )
             try:
@@ -112,17 +112,17 @@ async def _check_member(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     if not missing:
         return
     channel_links = ", ".join(f"[{ch}](https://t.me/{ch})" for ch in missing)
-    name = f"[{user.first_name}](tg://user?id={user.id})" if user else "You"
+    name = f"[{user.first_name}](tg://user?id={user.id})" if user else "Tú"
     text = (
-        f"{name}, you are **not subscribed** to the required channel(s) yet. "
-        f"Please join: {channel_links} and **press the button below** to unmute yourself."
+        f"{name}, todavía **no te uniste** a los canales obligatorios. "
+        f"Únete aquí: {channel_links} y toca el botón de abajo para desilenciarte."
     )
     try:
         await message.reply_text(
             text,
             parse_mode="Markdown",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("UnMute Me", callback_data="onUnMuteRequest")],
+                [InlineKeyboardButton("Desilenciarme", callback_data="onUnMuteRequest")],
             ]),
         )
         await bot.restrict_chat_member(
@@ -132,7 +132,7 @@ async def _check_member(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         )
     except Forbidden:
         try:
-            await message.reply_text("**I am not an admin here.** Make me admin with ban permission. _#Leaving..._", parse_mode="Markdown")
+            await message.reply_text("No soy administrador aquí. Dame permiso de admin para banear. _Me voy del chat…_", parse_mode="Markdown")
         except Exception:
             pass
         try:
@@ -148,10 +148,10 @@ async def _cmd_forcesubscribe(update: Update, context: ContextTypes.DEFAULT_TYPE
     try:
         member = await context.bot.get_chat_member(message.chat.id, message.from_user.id)
     except Exception:
-        await message.reply_text("Could not verify your role.")
+        await message.reply_text("No pude verificar tu rol.")
         return
     if member.status != "creator" and message.from_user.id not in Config.SUDO_USERS:
-        await message.reply_text("**Group Creator Required** — Only the group creator (or SUDO) can do that.", parse_mode="Markdown")
+        await message.reply_text("**Solo el creador del grupo** (o un SUDO) puede hacer esto.", parse_mode="Markdown")
         return
     chat_id = message.chat.id
     args = (context.args or [])
@@ -160,12 +160,11 @@ async def _cmd_forcesubscribe(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     if first in ("off", "no", "disable"):
         sql.disapprove(chat_id)
-        await message.reply_text("**Force Subscribe is Disabled.**", parse_mode="Markdown")
+        await message.reply_text("**Suscripción obligatoria desactivada.**", parse_mode="Markdown")
         return
     if first == "clear":
         await message.reply_text(
-            "✅ In this version, muted users must use the **UnMute Me** button after joining the channel(s). "
-            "There is no bulk unmute."
+            "En esta versión, los silenciados tienen que tocar el botón **Desilenciarme** después de unirse al canal. No hay desilenciado masivo."
         )
         return
 
@@ -174,16 +173,16 @@ async def _cmd_forcesubscribe(update: Update, context: ContextTypes.DEFAULT_TYPE
         if channels:
             channels_links = ", ".join(f"[{c}](https://t.me/{c})" for c in channels)
             await message.reply_text(
-                f"**Force Subscribe is enabled.** Required channel(s): {channels_links}",
-            parse_mode="Markdown",
+                f"**Suscripción obligatoria activa.** Canal(es) requeridos: {channels_links}",
+                parse_mode="Markdown",
             )
         else:
-            await message.reply_text("**Force Subscribe is disabled** in this chat.", parse_mode="Markdown")
+            await message.reply_text("**Suscripción obligatoria desactivada** en este chat.", parse_mode="Markdown")
         return
 
     channels_to_set = [p for p in input_parts if p.lower() not in ("off", "no", "disable", "clear")]
     if not channels_to_set:
-        await message.reply_text("❗ Provide at least one channel username (e.g. /ForceSubscribe @channel).")
+        await message.reply_text("Indica al menos un canal (ej: /ForceSubscribe @canal).")
         return
     failed = []
     for ch in channels_to_set:
@@ -196,14 +195,14 @@ async def _cmd_forcesubscribe(update: Update, context: ContextTypes.DEFAULT_TYPE
             failed.append(ch)
     if failed:
         await message.reply_text(
-            f"❗ Invalid or I'm not admin in: {', '.join('@' + c for c in failed)}. "
-            "Add me as admin in the channel(s) and use valid usernames."
+            f"Canales inválidos o no soy admin en: {', '.join('@' + c for c in failed)}. "
+            "Agrégame como admin en el/los canal(es) y usa nombres válidos."
         )
         return
     sql.set_channels(chat_id, channels_to_set)
     channels_links = ", ".join(f"[{c}](https://t.me/{c})" for c in channels_to_set)
     await message.reply_text(
-        f"**Force Subscribe enabled.** Members must join: {channels_links}",
+        f"**Suscripción obligatoria activada.** Los miembros tienen que unirse a: {channels_links}",
         parse_mode="Markdown",
     )
 

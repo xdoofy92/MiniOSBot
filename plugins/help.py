@@ -9,17 +9,17 @@ logger = logging.getLogger(__name__)
 
 def _help_buttons(pos: int):
     if pos == 1:
-        return [[InlineKeyboardButton(text="-->", callback_data="help+2")]]
+        return [[InlineKeyboardButton(text="Siguiente →", callback_data="help+2")]]
     if pos == len(tr.HELP_MSG) - 1:
         return [
-            [InlineKeyboardButton(text="Support Chat", url="https://t.me/ViperCommunity")],
-            [InlineKeyboardButton(text="Feature Request & Issues", url="https://github.com/viperadnan-git/force-subscribe-telegram-bot/issues/new")],
-            [InlineKeyboardButton(text="<--", callback_data=f"help+{pos-1}")],
+            [InlineKeyboardButton(text="Chat de soporte", url="https://t.me/ViperCommunity")],
+            [InlineKeyboardButton(text="Sugerencias e issues", url="https://github.com/viperadnan-git/force-subscribe-telegram-bot/issues/new")],
+            [InlineKeyboardButton(text="← Anterior", callback_data=f"help+{pos-1}")],
         ]
     return [
         [
-            InlineKeyboardButton(text="<--", callback_data=f"help+{pos-1}"),
-            InlineKeyboardButton(text="-->", callback_data=f"help+{pos+1}"),
+            InlineKeyboardButton(text="← Anterior", callback_data=f"help+{pos-1}"),
+            InlineKeyboardButton(text="Siguiente →", callback_data=f"help+{pos+1}"),
         ],
     ]
 

@@ -1,15 +1,24 @@
 import os
 
+def _get_token():
+    """Lee el token de cualquier variable de entorno habitual (Railway puede usar mayúsculas)."""
+    return (
+        os.environ.get("tok3n") or
+        os.environ.get("TOK3N") or
+        os.environ.get("BOT_TOKEN") or
+        os.environ.get("bot_token") or
+        ""
+    ).strip()
+
 class Config():
-  # Usar variables de entorno si ENV=True o si existe tok3n (p. ej. en Railway)
-  ENV = bool(os.environ.get('ENV', False)) or bool(os.environ.get("tok3n"))
+  # Token: siempre leer de env (varias posibles claves por compatibilidad con Railway/plataformas)
+  BOT_TOKEN = _get_token()
+  ENV = bool(os.environ.get("ENV", False)) or bool(BOT_TOKEN)
   if ENV:
-    BOT_TOKEN = os.environ.get("tok3n") or os.environ.get("BOT_TOKEN")
-    DATABASE_URL = os.environ.get("DATABASE_URL")
+    DATABASE_URL = os.environ.get("DATABASE_URL") or ""
     _sudo = (os.environ.get("SUDO_USERS") or "").strip()
     SUDO_USERS = list(set(int(x) for x in _sudo.split() if x.isdigit()))
   else:
-    BOT_TOKEN = ""
     DATABASE_URL = ""
     SUDO_USERS = []
 
@@ -18,13 +27,13 @@ class Messages():
       HELP_MSG = [
         ".",
 
-        "**Force Subscribe**\n__Force group members to join one or more channels before sending messages.\nI will mute members who haven't joined and they can unmute by joining and pressing the button.__",
+        "**Suscripción obligatoria**\n__Obligo a los miembros del grupo a unirse a uno o más canales antes de escribir.\nSilencio a quien no se haya unido; pueden desilenciarse uniéndose y tocando el botón.__",
 
-        "**Setup**\n__First of all add me in the group as admin with ban users permission and in the channel as admin.\nNote: Only creator of the group can setup me and i will leave the chat if i am not an admin in the chat.__",
+        "**Configuración**\n__Primero agrégame al grupo como administrador (con permiso de banear) y al canal como administrador.\nSolo el creador del grupo puede configurarme; me voy del chat si no soy admin.__",
 
-        "**Commands**\n__/ForceSubscribe - Current settings.\n/ForceSubscribe off - Disable.\n/ForceSubscribe @channel (or several @ch1 @ch2) - Enable and set channel(s).\n/ForceSubscribe clear - Unmute all members muted by me.\n\nNote: /FSub is an alias of /ForceSubscribe__",
+        "**Comandos**\n__/ForceSubscribe - Ver configuración actual.\n/ForceSubscribe off - Desactivar.\n/ForceSubscribe @canal (o varios @c1 @c2) - Activar y elegir canal(es).\n/ForceSubscribe clear - Mensaje para desilenciar.\n\n/FSub es un atajo de /ForceSubscribe.__",
 
-        "**Developed by @viperadnan**"
+        "**Desarrollado por @viperadnan**"
       ]
 
-      START_MSG = "**Hey [{}](tg://user?id={})**\n__I can force members to join a specific channel before writing messages in the group.\nLearn more at /help__"
+      START_MSG = "**Hola [{}](tg://user?id={})**\n__Puedo obligar a los miembros a unirse a un canal antes de escribir en el grupo.\nMás info en /help__"

@@ -8,6 +8,9 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     level=logging.INFO,
 )
+# Evitar que httpx registre cada petición de polling (getUpdates) en los logs
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 # Token: Config + fallback leyendo env al arrancar (por si la plataforma inyecta vars después)
 _token = Config.BOT_TOKEN or os.environ.get("tok3n") or os.environ.get("TOK3N") or os.environ.get("BOT_TOKEN") or ""

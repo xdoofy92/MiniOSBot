@@ -21,17 +21,8 @@ def _escape_html(text: str) -> str:
     return str(text).replace("&", "&amp;").replace("<", "&lt;")
 
 
-# Permisos completos para desmutear (solo restrict, nunca ban/unban)
-_FULL_PERMISSIONS = ChatPermissions(
-    can_send_messages=True,
-    can_send_media_messages=True,
-    can_send_polls=True,
-    can_send_other_messages=True,
-    can_add_web_page_previews=True,
-    can_change_info=True,
-    can_invite_users=True,
-    can_pin_messages=True,
-)
+# Para desmutear: solo permitir enviar mensajes (compatible con todas las versiones de PTB)
+_FULL_PERMISSIONS = ChatPermissions(can_send_messages=True)
 
 
 async def _on_unmute_request(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

@@ -52,8 +52,8 @@ Todas las variables se definen en el entorno (en Railway: **Variables** del proy
 | Variable       | Obligatoria | Descripción |
 |----------------|-------------|-------------|
 | **tok3n**      | ✅ Sí       | Token del bot ([@BotFather](https://t.me/botfather)) |
-| **OWNER_ID**   | ✅ Sí       | Tu user ID de Telegram. Solo ese usuario puede usar el bot y añadirlo a grupos. |
-| **SUDO_USERS** | No          | IDs de usuarios separados por espacios (admins que pueden usar /FSub en el grupo). |
+| **OWNER_ID**   | ✅ Sí       | Tu UserID de Telegram. Solo ese usuario podrá usarlo y añadirlo a grupos. |
+| **SUDO_USERS** | No          | IDs de usuarios separados por espacios (pueden usar /FSub en el grupo). |
 | **DATABASE_URL** | No        | URL de PostgreSQL. Si no se define, se usa SQLite (archivo local). |
 
 ---

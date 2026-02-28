@@ -17,7 +17,7 @@ forceSubscribe.__table__.create(checkfirst=True)
 
 
 class MutedUser(BASE):
-    """Usuarios muteados por el bot en cada chat (para desilenciado masivo con /ForceSubscribe clear)."""
+    """Usuarios muteados por el bot en cada chat (para desilenciado masivo con /FSub clear)."""
     __tablename__ = "muted_users"
     __table_args__ = (PrimaryKeyConstraint("chat_id", "user_id", name="muted_users_pkey"),)
     chat_id = Column(BigInteger, primary_key=True)
@@ -116,7 +116,7 @@ def clear_unverified_count(chat_id, user_id):
 
 
 def clear_unverified_count_for_chat(chat_id):
-    """Borra todos los contadores del chat (tras /ForceSubscribe clear)."""
+    """Borra todos los contadores del chat (tras /FSub clear)."""
     try:
         SESSION.query(UnverifiedCount).filter(UnverifiedCount.chat_id == int(chat_id)).delete()
         SESSION.commit()
@@ -174,7 +174,7 @@ def clear_notification_message_id(chat_id, user_id):
 
 
 def get_all_notification_message_ids(chat_id):
-    """Devuelve todos los message_id de notificaciones en este chat (para /ForceSubscribe clear)."""
+    """Devuelve todos los message_id de notificaciones en este chat (para /FSub clear)."""
     try:
         rows = SESSION.query(NotificationMessage).filter(NotificationMessage.chat_id == int(chat_id)).all()
         return [r.message_id for r in rows]
@@ -221,7 +221,7 @@ def get_muted_users(chat_id):
 
 
 def clear_muted_for_chat(chat_id):
-    """Borra muteados, notificaciones y contadores de este chat (tras /ForceSubscribe clear)."""
+    """Borra muteados, notificaciones y contadores de este chat (tras /FSub clear)."""
     try:
         cid = int(chat_id)
         SESSION.query(MutedUser).filter(MutedUser.chat_id == cid).delete()

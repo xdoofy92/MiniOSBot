@@ -297,7 +297,7 @@ async def _cmd_forcesubscribe(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     channels_to_set = [p for p in input_parts if p.lower() not in ("off", "no", "disable", "clear")]
     if not channels_to_set:
-        await message.reply_text("⚠️ Indica al menos un canal (ej: /ForceSubscribe @canal).")
+        await message.reply_text("⚠️ Indica al menos un canal (ej: /FSub @canal).")
         return
     failed = []
     try:
@@ -338,4 +338,4 @@ def register(app):
             _check_member,
         )
     )
-    app.add_handler(CommandHandler(["forcesubscribe", "fsub"], _cmd_forcesubscribe))
+    app.add_handler(CommandHandler("fsub", _cmd_forcesubscribe))

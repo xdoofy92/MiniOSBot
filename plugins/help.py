@@ -12,9 +12,9 @@ def _help_buttons(pos: int):
         return [[InlineKeyboardButton(text="Continuar", callback_data="help+2")]]
     if pos == len(tr.HELP_MSG) - 1:
         return [
-            [InlineKeyboardButton(text="Fork", url="https://github.com/xdoofy92/MiniOSBot")],
-            [InlineKeyboardButton(text="Original", url="https://github.com/viperadnan-git/force-subscribe-telegram-bot")],
-            [InlineKeyboardButton(text="Inicio", callback_data="help+1")],
+            [InlineKeyboardButton(text="Fork xdoofy92", url="https://github.com/xdoofy92/MiniOSBot")],
+            [InlineKeyboardButton(text="Original viperadnan", url="https://github.com/viperadnan-git/force-subscribe-telegram-bot")],
+            [InlineKeyboardButton(text="Salir", callback_data="help+close")],
         ]
     return [
         [
@@ -46,6 +46,12 @@ async def _help_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await query.answer(Config.FORK_MSG, show_alert=True)
         return
     await query.answer()
+    if query.data == "help+close":
+        try:
+            await query.message.delete()
+        except Exception:
+            pass
+        return
     try:
         pos = int(query.data.split("+")[1])
     except (IndexError, ValueError):

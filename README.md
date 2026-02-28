@@ -17,7 +17,7 @@
 Este proyecto está pensado para desplegarse en [Railway](https://railway.app/):
 
 1. Crea un proyecto en Railway y conecta este repositorio de GitHub.
-2. En **Variables** añade las variables que necesites (ver [Configuración](#-configuración) más abajo).
+2. En **Variables** añade al menos **tok3n** y **OWNER_ID** (ver [Configuración](#-configuración) más abajo).
 3. Railway usará el `Procfile` y ejecutará `python bot.py`. ⚠️ Deja **1 réplica** (una sola instancia).
 
 ### 📋 Requisitos previos (instalación local)
@@ -52,7 +52,7 @@ Todas las variables se definen en el entorno (en Railway: **Variables** del proy
 | Variable       | Obligatoria | Descripción |
 |----------------|-------------|-------------|
 | **tok3n**      | ✅ Sí       | Token del bot ([@BotFather](https://t.me/botfather)) |
-| **OWNER_ID**   | No          | Tu user ID de Telegram. Solo ese usuario puede usar el bot y añadirlo a grupos. |
+| **OWNER_ID**   | ✅ Sí       | Tu user ID de Telegram. Solo ese usuario puede usar el bot y añadirlo a grupos. |
 | **SUDO_USERS** | No          | IDs de usuarios separados por espacios (admins que pueden usar /FSub en el grupo). |
 | **DATABASE_URL** | No        | URL de PostgreSQL. Si no se define, se usa SQLite (archivo local). |
 
@@ -89,5 +89,4 @@ python bot.py
 ## 🙏 Agradecimientos
 
 - [python-telegram-bot](https://github.com/python-telegram-bot/python-telegram-bot)
-- [Hasibul Kabir](https://GitHub.com/hasibulkabir) y [Spechide](https://GitHub.com/spechide) por su ayuda.
 - Proyecto original: [viperadnan-git/force-subscribe-telegram-bot](https://github.com/viperadnan-git/force-subscribe-telegram-bot).

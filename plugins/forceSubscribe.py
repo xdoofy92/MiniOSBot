@@ -98,6 +98,15 @@ async def _check_member_impl(update: Update, context: ContextTypes.DEFAULT_TYPE)
         logger.info("Chat %s sin canales. Usar /ForceSubscribe @canal en el grupo.", chat_id)
         return
 
+    # Si el mensaje lo envía el propio canal (ej. publicación en grupo vinculado), no borrar ni verificar
+    sender_chat = getattr(message, "sender_chat", None)
+    if sender_chat and getattr(sender_chat, "type", None) == "channel":
+        sender_username = (getattr(sender_chat, "username", None) or "").strip().lower()
+        if sender_username:
+            channel_names = [ch.lstrip("@").lower() for ch in channels]
+            if sender_username in channel_names:
+                return
+
     # Admins/creador del grupo o lista Admin: no comprobar canal
     try:
         member = await bot.get_chat_member(chat_id, user_id)

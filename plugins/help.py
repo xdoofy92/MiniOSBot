@@ -12,8 +12,8 @@ def _help_buttons(pos: int):
         return [[InlineKeyboardButton(text="Continuar", callback_data="help+2")]]
     if pos == len(tr.HELP_MSG) - 1:
         return [
-            [InlineKeyboardButton(text="Descargar Fork", url="https://github.com/xdoofy92/MiniOSBot")],
-            [InlineKeyboardButton(text="Descargar Original", url="https://github.com/viperadnan-git/force-subscribe-telegram-bot")],
+            [InlineKeyboardButton(text="Fork", url="https://github.com/xdoofy92/MiniOSBot")],
+            [InlineKeyboardButton(text="Original", url="https://github.com/viperadnan-git/force-subscribe-telegram-bot")],
             [InlineKeyboardButton(text="Inicio", callback_data="help+1")],
         ]
     return [

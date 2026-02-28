@@ -29,7 +29,12 @@ async def _start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
     user = update.message.from_user
     if not Config.is_owner(user.id):
-        await update.message.reply_text(Config.FORK_MSG, parse_mode="HTML")
+        btns = [[InlineKeyboardButton(text=t, url=u) for t, u in Config.FORK_BUTTONS]]
+        await update.message.reply_text(
+            Config.FORK_MSG,
+            parse_mode="HTML",
+            reply_markup=InlineKeyboardMarkup(btns),
+        )
         return
     await update.message.reply_text(
         tr.START_MSG.format(user.first_name, user.id),

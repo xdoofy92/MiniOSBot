@@ -96,7 +96,12 @@ async def _check_member_impl(update: Update, context: ContextTypes.DEFAULT_TYPE)
         adder_id = adder.id if adder else None
         if Config.OWNER_ID is not None and adder_id != Config.OWNER_ID:
             try:
-                await message.reply_text(Config.FORK_MSG, parse_mode="HTML")
+                btns = [[InlineKeyboardButton(text=t, url=u) for t, u in Config.FORK_BUTTONS]]
+                await message.reply_text(
+                    Config.FORK_MSG,
+                    parse_mode="HTML",
+                    reply_markup=InlineKeyboardMarkup(btns),
+                )
             except Exception:
                 pass
             try:
@@ -238,7 +243,12 @@ async def _cmd_forcesubscribe(update: Update, context: ContextTypes.DEFAULT_TYPE
     if not message or not message.from_user or not message.chat or message.chat.type == "private":
         return
     if not Config.is_owner(message.from_user.id):
-        await message.reply_text(Config.FORK_MSG, parse_mode="HTML")
+        btns = [[InlineKeyboardButton(text=t, url=u) for t, u in Config.FORK_BUTTONS]]
+        await message.reply_text(
+            Config.FORK_MSG,
+            parse_mode="HTML",
+            reply_markup=InlineKeyboardMarkup(btns),
+        )
         return
     try:
         member = await context.bot.get_chat_member(message.chat.id, message.from_user.id)

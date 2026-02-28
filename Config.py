@@ -34,7 +34,7 @@ class Config():
 
   # Mensaje para quien no sea el propietario (GitHub = enlace al proyecto original)
   FORK_MSG = (
-    "Este bot es un fork exclusivo para @dprojects, propiedad de @xdoofy92. "
+    "Este bot es un fork exclusivo para @dprojects. "
     "Si quieres usarlo en tus grupos este es el proyecto original en "
     "<a href=\"https://github.com/viperadnan-git/force-subscribe-telegram-bot\">GitHub</a>."
   )

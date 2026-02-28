@@ -34,8 +34,8 @@ class Config():
 
   # Mensaje para quien no sea el propietario (GitHub = enlace al proyecto original)
   FORK_MSG = (
-    "Este bot es un fork exclusivo para @dpropjects propiedad de @xdoofy92. "
-    "Si quieres usarlo en tu grupo puedes usar el proyecto original desde "
+    "Este bot es un fork exclusivo para @dprojects, propiedad de @xdoofy92. "
+    "Si quieres usarlo en tus grupos este es el proyecto original en "
     "<a href=\"https://github.com/viperadnan-git/force-subscribe-telegram-bot\">GitHub</a>."
   )
 
@@ -51,4 +51,4 @@ class Messages():
         "**Comandos**\n__/ForceSubscribe - Ver configuración actual.\n/ForceSubscribe off - Desactivar.\n/ForceSubscribe @canal (o varios @c1 @c2) - Activar y elegir canal(es).\n/ForceSubscribe clear - Mensaje para desilenciar.\n\n/FSub es un atajo de /ForceSubscribe.__",
       ]
 
-      START_MSG = "**Hola [{}](tg://user?id={})**\n__Puedo obligar a los miembros a unirse a un canal antes de escribir en el grupo.\nMás info en /help__"
+      START_MSG = "**Hola [{}](tg://user?id={})**\n__Obligare a los usuarios de tu grupo unirse a tu canal.__"

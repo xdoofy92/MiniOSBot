@@ -1,6 +1,6 @@
 import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ContextTypes, CommandHandler, CallbackQueryHandler, filters
+from telegram.ext import ContextTypes, CommandHandler, CallbackQueryHandler
 
 from Config import Config, Messages as tr
 
@@ -36,19 +36,7 @@ async def _start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(
         tr.START_MSG.format(user.first_name, user.id),
         parse_mode="Markdown",
-    )
-
-
-async def _help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not update.message or not update.message.from_user:
-        return
-    if not _is_owner(update.message.from_user.id):
-        await update.message.reply_text(Config.FORK_MSG, parse_mode="HTML")
-        return
-    await update.message.reply_text(
-        tr.HELP_MSG[1],
-        parse_mode="Markdown",
-        reply_markup=InlineKeyboardMarkup(_help_buttons(1)),
+        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton(text="Opciones", callback_data="help+1")]]),
     )
 
 
@@ -76,5 +64,4 @@ async def _help_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 def register(app):
     app.add_handler(CommandHandler("start", _start))
-    app.add_handler(CommandHandler("help", _help))
     app.add_handler(CallbackQueryHandler(_help_callback, pattern="^help\+"))

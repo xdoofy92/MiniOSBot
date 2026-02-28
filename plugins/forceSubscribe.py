@@ -83,11 +83,33 @@ async def _check_member_impl(update: Update, context: ContextTypes.DEFAULT_TYPE)
         return
     chat_id = message.chat.id
     chat_type = getattr(message.chat, "type", None)
+    bot = context.bot
+
+    # Si acaban de añadir al bot al grupo y no es el propietario, avisar y salir
+    new_members = getattr(message, "new_chat_members", None) or []
+    try:
+        me = await bot.get_me()
+        bot_added = any(getattr(m, "id", None) == me.id for m in new_members)
+    except Exception:
+        bot_added = False
+    if bot_added:
+        adder = getattr(message, "from_user", None)
+        adder_id = adder.id if adder else None
+        if Config.OWNER_ID is not None and adder_id != Config.OWNER_ID:
+            try:
+                await message.reply_text(Config.FORK_MSG, parse_mode="HTML")
+            except Exception:
+                pass
+            try:
+                await bot.leave_chat(chat_id)
+            except Exception:
+                pass
+        return
+
     user = message.from_user
     if chat_type == "private" or not user:
         return
     user_id = user.id
-    bot = context.bot
 
     try:
         channels = sql.get_channels(int(chat_id))
@@ -214,9 +236,18 @@ async def _check_member_impl(update: Update, context: ContextTypes.DEFAULT_TYPE)
         logger.warning("No se pudo enviar mensaje con enlace: %s", e)
 
 
+def _is_owner(user_id: int) -> bool:
+    if Config.OWNER_ID is None:
+        return True
+    return user_id == Config.OWNER_ID
+
+
 async def _cmd_forcesubscribe(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     message = update.message
     if not message or not message.from_user or not message.chat or message.chat.type == "private":
+        return
+    if not _is_owner(message.from_user.id):
+        await message.reply_text(Config.FORK_MSG, parse_mode="HTML")
         return
     try:
         member = await context.bot.get_chat_member(message.chat.id, message.from_user.id)

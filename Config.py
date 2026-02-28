@@ -10,9 +10,19 @@ def _get_token():
         ""
     ).strip()
 
+def _get_owner_id():
+    """ID de Telegram del propietario del bot (quien lo creó en BotFather). Solo ese usuario puede usarlo."""
+    raw = (os.environ.get("OWNER_ID") or os.environ.get("owner_id") or "").strip()
+    if not raw or not raw.lstrip("-").isdigit():
+        return None
+    return int(raw)
+
+
 class Config():
   # Token: siempre leer de env (varias posibles claves por compatibilidad con Railway/plataformas)
   BOT_TOKEN = _get_token()
+  # Solo el propietario puede usar el bot (pon en OWNER_ID tu user id de Telegram)
+  OWNER_ID = _get_owner_id()
   ENV = bool(os.environ.get("ENV", False)) or bool(BOT_TOKEN)
   if ENV:
     DATABASE_URL = os.environ.get("DATABASE_URL") or ""
@@ -21,6 +31,13 @@ class Config():
   else:
     DATABASE_URL = ""
     SUDO_USERS = []
+
+  # Mensaje para quien no sea el propietario (GitHub = enlace al proyecto original)
+  FORK_MSG = (
+    "Este bot es un fork exclusivo para @dpropjects propiedad de @xdoofy92. "
+    "Si quieres usarlo en tu grupo puedes usar el proyecto original desde "
+    "<a href=\"https://github.com/viperadnan-git/force-subscribe-telegram-bot\">GitHub</a>."
+  )
 
 
 class Messages():
@@ -32,8 +49,6 @@ class Messages():
         "**Configuración**\n__Primero agrégame al grupo como administrador (con permiso de banear) y al canal como administrador.\nSolo el creador del grupo puede configurarme; me voy del chat si no soy admin.__",
 
         "**Comandos**\n__/ForceSubscribe - Ver configuración actual.\n/ForceSubscribe off - Desactivar.\n/ForceSubscribe @canal (o varios @c1 @c2) - Activar y elegir canal(es).\n/ForceSubscribe clear - Mensaje para desilenciar.\n\n/FSub es un atajo de /ForceSubscribe.__",
-
-        "**Un mod creado por @xdoofy92 del proyecto de @viperadnan**"
       ]
 
       START_MSG = "**Hola [{}](tg://user?id={})**\n__Puedo obligar a los miembros a unirse a un canal antes de escribir en el grupo.\nMás info en /help__"

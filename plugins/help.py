@@ -2,7 +2,7 @@ import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, CommandHandler, CallbackQueryHandler, filters
 
-from Config import Messages as tr
+from Config import Config, Messages as tr
 
 logger = logging.getLogger(__name__)
 
@@ -11,11 +11,7 @@ def _help_buttons(pos: int):
     if pos == 1:
         return [[InlineKeyboardButton(text="Siguiente →", callback_data="help+2")]]
     if pos == len(tr.HELP_MSG) - 1:
-        return [
-            [InlineKeyboardButton(text="Soporte del Bot", url="https://t.me/ViperCommunity")],
-            [InlineKeyboardButton(text="Sugerencias y Bugs", url="https://github.com/viperadnan-git/force-subscribe-telegram-bot/issues/new")],
-            [InlineKeyboardButton(text="← Anterior", callback_data=f"help+{pos-1}")],
-        ]
+        return [[InlineKeyboardButton(text="← Anterior", callback_data=f"help+{pos-1}")]]
     return [
         [
             InlineKeyboardButton(text="← Anterior", callback_data=f"help+{pos-1}"),
@@ -24,10 +20,19 @@ def _help_buttons(pos: int):
     ]
 
 
+def _is_owner(user_id: int) -> bool:
+    if Config.OWNER_ID is None:
+        return True
+    return user_id == Config.OWNER_ID
+
+
 async def _start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not update.message or not update.message.from_user:
         return
     user = update.message.from_user
+    if not _is_owner(user.id):
+        await update.message.reply_text(Config.FORK_MSG, parse_mode="HTML")
+        return
     await update.message.reply_text(
         tr.START_MSG.format(user.first_name, user.id),
         parse_mode="Markdown",
@@ -35,7 +40,10 @@ async def _start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def _help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not update.message:
+    if not update.message or not update.message.from_user:
+        return
+    if not _is_owner(update.message.from_user.id):
+        await update.message.reply_text(Config.FORK_MSG, parse_mode="HTML")
         return
     await update.message.reply_text(
         tr.HELP_MSG[1],
@@ -47,6 +55,9 @@ async def _help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 async def _help_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     if not query or not query.data or not query.data.startswith("help+"):
+        return
+    if query.from_user and not _is_owner(query.from_user.id):
+        await query.answer(Config.FORK_MSG, show_alert=True)
         return
     await query.answer()
     try:
@@ -64,6 +75,6 @@ async def _help_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 
 def register(app):
-    app.add_handler(CommandHandler("start", _start, filters.ChatType.PRIVATE))
-    app.add_handler(CommandHandler("help", _help, filters.ChatType.PRIVATE))
+    app.add_handler(CommandHandler("start", _start))
+    app.add_handler(CommandHandler("help", _help))
     app.add_handler(CallbackQueryHandler(_help_callback, pattern="^help\+"))

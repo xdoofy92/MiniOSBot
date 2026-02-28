@@ -41,8 +41,8 @@ class Config():
 
   # Mensaje para quien no sea el propietario (con botones de descarga)
   FORK_MSG = (
-    "Este bot es un fork exclusivo para @dprojects. "
-    "Si quieres usarlo te dejo las descargas."
+    "Es un fork creado por @xdoofy92 para @dprojects. "
+    "Si quieres descargarlo lo puedes hacer en el siguiente botón."
   )
   # Botón para el mensaje de no propietario
   FORK_BUTTONS = (("Descargar", "https://github.com/xdoofy92/MiniOSBot"),)

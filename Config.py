@@ -44,11 +44,8 @@ class Config():
     "Este bot es un fork exclusivo para @dprojects. "
     "Si quieres usarlo te dejo las descargas."
   )
-  # Botones (texto, url) para el mensaje de no propietario: una fila, dos botones
-  FORK_BUTTONS = (
-    ("Bot Doofy", "https://github.com/xdoofy92/MiniOSBot"),
-    ("Bot Viperadnan", "https://github.com/viperadnan-git/force-subscribe-telegram-bot"),
-  )
+  # Botón para el mensaje de no propietario
+  FORK_BUTTONS = (("Descargar", "https://github.com/xdoofy92/MiniOSBot"),)
 
 
 Config.is_owner = is_owner  # Uso: Config.is_owner(user_id)
@@ -64,7 +61,7 @@ class Messages():
 
         "📋 **Comandos**\n__/FSub — Ver estado.\n/FSub off — Desactivar.\n/FSub @canal — Activar canal(es).\n/FSub clear — Desilenciar a todos.__",
 
-        "🔗 **Sobre este bot**\n__Este es un fork creado por @xdoofy92 para @dprojects. Si quieres descargarlo lo puedes hacer aquí.__",
+        "🔗 **Sobre este bot**\n__Es un fork creado por @xdoofy92 para @dprojects. Si quieres descargarlo lo puedes hacer en el siguiente botón.__",
       ]
 
       START_MSG = "👋 **Hola [{}](tg://user?id={})**\n__Obligo a los usuarios de tu grupo a unirse a tu canal.__"

@@ -19,7 +19,8 @@ forceSubscribe.__table__.create(checkfirst=True)
 def get_channels(chat_id):
     """Devuelve la lista de canales configurados para el chat (puede ser vacía)."""
     try:
-        rows = SESSION.query(forceSubscribe).filter(forceSubscribe.chat_id == chat_id).all()
+        cid = int(chat_id)
+        rows = SESSION.query(forceSubscribe).filter(forceSubscribe.chat_id == cid).all()
         return [r.channel for r in rows]
     except Exception:
         return []
@@ -43,27 +44,29 @@ def fs_settings(chat_id):
 
 def add_channel(chat_id, channel):
     """Añade un canal al chat (si ya existe, no hace nada)."""
+    cid = int(chat_id)
     existing = SESSION.query(forceSubscribe).filter(
-        forceSubscribe.chat_id == chat_id,
+        forceSubscribe.chat_id == cid,
         forceSubscribe.channel == channel
     ).first()
     if not existing:
-        SESSION.add(forceSubscribe(chat_id=chat_id, channel=channel))
+        SESSION.add(forceSubscribe(chat_id=cid, channel=channel))
         SESSION.commit()
     SESSION.close()
 
 
 def set_channels(chat_id, channels):
     """Reemplaza todos los canales del chat por la lista dada."""
-    SESSION.query(forceSubscribe).filter(forceSubscribe.chat_id == chat_id).delete()
+    cid = int(chat_id)
+    SESSION.query(forceSubscribe).filter(forceSubscribe.chat_id == cid).delete()
     for ch in channels:
-        SESSION.add(forceSubscribe(chat_id=chat_id, channel=ch))
+        SESSION.add(forceSubscribe(chat_id=cid, channel=ch))
     SESSION.commit()
     SESSION.close()
 
 
 def disapprove(chat_id):
     """Desactiva Force Subscribe para el chat (elimina todos los canales)."""
-    SESSION.query(forceSubscribe).filter(forceSubscribe.chat_id == chat_id).delete()
+    SESSION.query(forceSubscribe).filter(forceSubscribe.chat_id == int(chat_id)).delete()
     SESSION.commit()
     SESSION.close()

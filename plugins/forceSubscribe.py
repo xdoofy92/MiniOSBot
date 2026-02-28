@@ -14,6 +14,13 @@ def _channel_ref(channel: str) -> str:
     return channel if channel.startswith("@") else f"@{channel}"
 
 
+def _escape_html(text: str) -> str:
+    """Escapa < y & para usar en parse_mode=HTML y evita errores con nombres raros."""
+    if not text:
+        return ""
+    return str(text).replace("&", "&amp;").replace("<", "&lt;")
+
+
 async def _on_unmute_request(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     if not query or query.data != "onUnMuteRequest":
@@ -92,7 +99,11 @@ async def _check_member_impl(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     if chat_type == "private":
         return
-    channels = sql.get_channels(chat_id)
+    try:
+        channels = sql.get_channels(int(chat_id))
+    except Exception as e:
+        logger.exception("Error al obtener canales para chat_id=%s: %s", chat_id, e)
+        return
     if not channels:
         logger.info(
             "Chat %s sin canales. Usar /ForceSubscribe @canal en el grupo.",
@@ -131,15 +142,16 @@ async def _check_member_impl(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if not missing:
         return
 
-    # Primero mutear (restringir), luego enviar mensaje citando al usuario
-    channel_links = ", ".join(f"[{ch}](https://t.me/{ch})" for ch in missing)
-    mention = f"[{user.first_name}](tg://user?id={user_id})" if user.first_name else f"[Usuario](tg://user?id={user_id})"
+    # Primero mutear (restringir), luego enviar mensaje citando al usuario (HTML evita errores con nombres con _ * etc.)
+    channel_links = ", ".join(f'<a href="https://t.me/{ch}">@{ch}</a>' for ch in missing)
+    name_escaped = _escape_html(user.first_name or "Usuario")
+    mention = f'<a href="tg://user?id={user_id}">{name_escaped}</a>'
     text = (
         f"{mention}, para participar en este grupo debes unirte al canal del proyecto.\n\n"
-        "🔒 **ÚNETE A MI CANAL**\n"
+        "🔒 <b>ÚNETE A MI CANAL</b>\n"
         f"{channel_links}\n\n"
         "🚫 Si no estás suscrito, no podrás enviar mensajes.\n"
-        "🔔 Únete y toca el botón **Verificar** para poder seguir hablando."
+        "🔔 Únete y toca el botón <b>Verificar</b> para poder seguir hablando."
     )
     logger.info("Mutando usuario %s en chat %s (no está en %s)", user_id, chat_id, missing)
 
@@ -166,7 +178,7 @@ async def _check_member_impl(update: Update, context: ContextTypes.DEFAULT_TYPE)
     try:
         await message.reply_text(
             text,
-            parse_mode="Markdown",
+            parse_mode="HTML",
             reply_to_message_id=message.message_id,
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("Verificar", callback_data="onUnMuteRequest")],
